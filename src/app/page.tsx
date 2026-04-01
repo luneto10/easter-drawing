@@ -220,21 +220,20 @@ function HomeContent() {
     function replaceUrlWithoutGiverId() {
         const params = new URLSearchParams(searchParams.toString());
         params.delete("giverId");
-
+    
         const nextUrl = params.toString()
             ? `${pathname}?${params.toString()}`
             : pathname;
-
-        // Update UI immediately so the back action feels reliable even when opened directly from email links.
+    
+        // Update the URL immediately so effects stop reading giverId right away.
+        window.history.replaceState(null, "", nextUrl);
+    
+        // Reset local UI state.
         lastFetchedIdRef.current = "";
         setActiveGiverId("");
         setResult(null);
         setError("");
         setView("intro");
-
-        startTransition(() => {
-            router.replace(nextUrl);
-        });
     }
 
     function replaceUrlWithGiverId(giverId: string) {

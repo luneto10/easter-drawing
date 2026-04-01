@@ -22,8 +22,14 @@ async function resetUsers() {
 export async function main() {
     await resetUsers();
 
-    const names = ["Alice", "Bob", "Carol", "Dave"];
-    await Promise.all(names.map((name) => prisma.user.create({ data: { name } })));
+    const users: Prisma.UserUncheckedCreateInput[] = [
+        { name: "Alice", email: "alice@example.com" },
+        { name: "Bob", email: "bob@example.com" },
+        { name: "Carol", email: "carol@example.com" },
+        { name: "Dave", email: "dave@example.com" },
+    ];
+
+    await Promise.all(users.map((user) => prisma.user.create({ data: user })));
 }
 
 main()

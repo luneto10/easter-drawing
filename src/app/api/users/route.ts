@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     try {
-        const user = await createUser(parsed.data.name);
+        const user = await createUser(parsed.data.name, parsed.data.email ?? null);
         return NextResponse.json(toUserListItem(user), { status: 201 });
     } catch (error) {
         if (error instanceof DomainError) {

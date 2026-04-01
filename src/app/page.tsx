@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -349,6 +350,17 @@ function HomeContent() {
                                             className="h-14 w-full rounded-xl bg-zinc-100 px-8 text-sm font-medium text-zinc-900 hover:bg-zinc-200"
                                         >
                                             Reveal
+                                        </Button>
+
+                                        <Button
+                                            asChild
+                                            type="button"
+                                            variant="outline"
+                                            className="h-14 w-full rounded-xl"
+                                        >
+                                            <Link href="/join">
+                                                Create account with email
+                                            </Link>
                                         </Button>
                                     </div>
 

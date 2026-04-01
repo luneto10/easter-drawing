@@ -6,6 +6,11 @@ export const createUserBodySchema = z.object({
         .string()
         .min(1, "name must not be empty")
         .max(120, "name is too long"),
+    email: z
+        .string()
+        .trim()
+        .email("email is invalid")
+        .optional(),
 });
 
 export type CreateUserBody = z.infer<typeof createUserBodySchema>;

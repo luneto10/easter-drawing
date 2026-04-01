@@ -21,12 +21,16 @@ export async function getUserById(id: string): Promise<User | null> {
     return userRowToDomain(row);
 }
 
-export async function createUser(name: string): Promise<User> {
-    const user = User.register(name);
+export async function createUser(
+    name: string,
+    email?: string | null,
+): Promise<User> {
+    const user = User.register(name, email);
     const row = await prisma.user.create({
         data: {
             id: user.id,
             name: user.name,
+            email: user.email,
         },
     });
     return userRowToDomain(row);
@@ -44,6 +48,32 @@ export async function updateUserName(id: string, name: string): Promise<User | n
     const row = await prisma.user.update({
         where: { id },
         data: { name: normalizedName },
+    });
+
+    return userRowToDomain(row);
+}
+
+export async function updateUserProfile(
+    id: string,
+    name: string,
+    email?: string | null,
+): Promise<User | null> {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+        throw new DomainError("Name is required");
+    }
+
+    // Reuse domain validation rules.
+    const validated = User.register(normalizedName, email);
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) return null;
+
+    const row = await prisma.user.update({
+        where: { id },
+        data: {
+            name: validated.name,
+            email: validated.email,
+        },
     });
 
     return userRowToDomain(row);

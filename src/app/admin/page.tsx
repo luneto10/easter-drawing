@@ -25,6 +25,7 @@ import Link from "next/link";
 type UserRow = {
     id: string;
     name: string;
+    email: string | null;
     recipientId: string | null;
     createdAt: string;
 };
@@ -36,8 +37,10 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [addName, setAddName] = useState("");
+    const [addEmail, setAddEmail] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
+    const [editingEmail, setEditingEmail] = useState("");
 
     const hasUsers = useMemo(() => users.length > 0, [users.length]);
 
@@ -52,7 +55,7 @@ export default function AdminPage() {
         });
     }
 
-    async function loadUsers() {
+    async function loadUsers(): Promise<boolean> {
         setLoading(true);
         setError("");
         try {
@@ -60,11 +63,13 @@ export default function AdminPage() {
             const payload = await response.json();
             if (!response.ok) {
                 setError(payload?.error ?? "Failed to load users");
-                return;
+                return false;
             }
             setUsers(payload as UserRow[]);
+            return true;
         } catch {
             setError("Failed to load users");
+            return false;
         } finally {
             setLoading(false);
         }
@@ -73,8 +78,8 @@ export default function AdminPage() {
     async function unlock(e: FormEvent) {
         e.preventDefault();
         if (!code.trim()) return;
-        await loadUsers();
-        setIsUnlocked(true);
+        const ok = await loadUsers();
+        setIsUnlocked(ok);
     }
 
     async function addPerson(e: FormEvent) {
@@ -86,7 +91,7 @@ export default function AdminPage() {
         try {
             const response = await request("/api/admin/users", {
                 method: "POST",
-                body: JSON.stringify({ name: addName }),
+                body: JSON.stringify({ name: addName, email: addEmail || undefined }),
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -94,6 +99,7 @@ export default function AdminPage() {
                 return;
             }
             setAddName("");
+            setAddEmail("");
             await loadUsers();
         } catch {
             setError("Failed to add person");
@@ -110,7 +116,7 @@ export default function AdminPage() {
         try {
             const response = await request(`/api/admin/users/${id}`, {
                 method: "PATCH",
-                body: JSON.stringify({ name: editingName }),
+                body: JSON.stringify({ name: editingName, email: editingEmail }),
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -119,6 +125,7 @@ export default function AdminPage() {
             }
             setEditingId(null);
             setEditingName("");
+            setEditingEmail("");
             await loadUsers();
         } catch {
             setError("Failed to update name");
@@ -162,6 +169,44 @@ export default function AdminPage() {
             await loadUsers();
         } catch {
             setError("Failed to run draw");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function sendEmailForUser(id: string) {
+        setLoading(true);
+        setError("");
+        try {
+            const response = await request(`/api/admin/users/${id}/send-email`, {
+                method: "POST",
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setError(payload?.error ?? "Failed to send email");
+                return;
+            }
+        } catch {
+            setError("Failed to send email");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function sendAllEmails() {
+        setLoading(true);
+        setError("");
+        try {
+            const response = await request("/api/admin/send-all-email", {
+                method: "POST",
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setError(payload?.error ?? "Failed to send all emails");
+                return;
+            }
+        } catch {
+            setError("Failed to send all emails");
         } finally {
             setLoading(false);
         }
@@ -249,6 +294,13 @@ export default function AdminPage() {
                         Run Draw Again
                     </Button>
                     <Button
+                        onClick={sendAllEmails}
+                        variant="outline"
+                        disabled={loading || !hasUsers}
+                    >
+                        Send All Email
+                    </Button>
+                    <Button
                         onClick={deleteAll}
                         variant="destructive"
                         disabled={loading || !hasUsers}
@@ -267,6 +319,11 @@ export default function AdminPage() {
                     onChange={(e) => setAddName(e.target.value)}
                     placeholder="Add person name"
                 />
+                <Input
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    placeholder="Email (name@email.com)"
+                />
                 <Button type="submit" disabled={loading}>
                     Add person
                 </Button>
@@ -281,6 +338,7 @@ export default function AdminPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
                                     <TableHead>Reference ID</TableHead>
                                     <TableHead className="text-center">
                                         Status
@@ -296,15 +354,27 @@ export default function AdminPage() {
                                         <TableRow key={user.id}>
                                             <TableCell>
                                                 {isEditing ? (
-                                                    <Input
-                                                        value={editingName}
-                                                        onChange={(e) =>
-                                                            setEditingName(e.target.value)
-                                                        }
-                                                    />
+                                                    <div className="space-y-2">
+                                                        <Input
+                                                            value={editingName}
+                                                            onChange={(e) =>
+                                                                setEditingName(e.target.value)
+                                                            }
+                                                        />
+                                                        <Input
+                                                            value={editingEmail}
+                                                            onChange={(e) =>
+                                                                setEditingEmail(e.target.value)
+                                                            }
+                                                            placeholder="Email (name@email.com)"
+                                                        />
+                                                    </div>
                                                 ) : (
                                                     user.name
                                                 )}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs">
+                                                {user.email ?? "-"}
                                             </TableCell>
                                             <TableCell className="font-mono text-xs">
                                                 {user.recipientId ?? "-"}
@@ -342,6 +412,7 @@ export default function AdminPage() {
                                                                 onClick={() => {
                                                                     setEditingId(null);
                                                                     setEditingName("");
+                                                                    setEditingEmail("");
                                                                 }}
                                                             >
                                                                 Cancel
@@ -354,11 +425,24 @@ export default function AdminPage() {
                                                             onClick={() => {
                                                                 setEditingId(user.id);
                                                                 setEditingName(user.name);
+                                                                setEditingEmail(
+                                                                    user.email ?? "",
+                                                                );
                                                             }}
                                                         >
                                                             Edit
                                                         </Button>
                                                     )}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            sendEmailForUser(user.id)
+                                                        }
+                                                        disabled={loading || !user.email}
+                                                    >
+                                                        Send Email
+                                                    </Button>
                                                     <Button
                                                         size="sm"
                                                         variant="destructive"

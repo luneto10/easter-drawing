@@ -1,7 +1,7 @@
 import { toUserListItem } from "@/server/application/dto/user-list-item";
 import {
     deleteUserById,
-    updateUserName,
+    updateUserProfile,
 } from "@/server/application/use-cases/users";
 import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
 import { DomainError } from "@/server/shared/errors/domain-error";
@@ -14,6 +14,12 @@ type RouteContext = {
 
 const updateUserBodySchema = z.object({
     name: z.string().trim().min(1).max(120),
+    email: z
+        .string()
+        .trim()
+        .email("email is invalid")
+        .optional()
+        .or(z.literal("")),
 });
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -38,7 +44,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     try {
-        const user = await updateUserName(id, parsed.data.name);
+        const user = await updateUserProfile(
+            id,
+            parsed.data.name,
+            parsed.data.email || null,
+        );
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }

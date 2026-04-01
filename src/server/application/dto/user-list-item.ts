@@ -4,6 +4,7 @@ import type { User } from "@/server/domain/entities/user";
 export type UserListItem = {
     id: string;
     name: string;
+    email: string | null;
     recipientId: string | null;
     createdAt: string;
 };
@@ -12,6 +13,7 @@ export function toUserListItem(user: User): UserListItem {
     return {
         id: user.id,
         name: user.name,
+        email: user.email,
         recipientId: user.recipientId,
         createdAt: user.createdAt.toISOString(),
     };

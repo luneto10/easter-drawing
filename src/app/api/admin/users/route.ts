@@ -1,6 +1,10 @@
 import { createUserBodySchema } from "@/server/application/dto/create-user-body";
 import { toUserListItem } from "@/server/application/dto/user-list-item";
-import { createUser, listUsers } from "@/server/application/use-cases/users";
+import {
+    createUser,
+    deleteAllUsers,
+    listUsers,
+} from "@/server/application/use-cases/users";
 import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { NextResponse } from "next/server";
@@ -50,6 +54,22 @@ export async function POST(request: Request) {
         console.error(error);
         return NextResponse.json(
             { error: "Failed to create user" },
+            { status: 500 },
+        );
+    }
+}
+
+export async function DELETE(request: Request) {
+    const unauthorized = ensureAdminCode(request);
+    if (unauthorized) return unauthorized;
+
+    try {
+        await deleteAllUsers();
+        return NextResponse.json({ ok: true });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json(
+            { error: "Failed to delete all users" },
             { status: 500 },
         );
     }

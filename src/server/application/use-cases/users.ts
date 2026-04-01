@@ -67,6 +67,14 @@ export async function deleteUserById(id: string): Promise<boolean> {
     return true;
 }
 
+export async function deleteAllUsers(): Promise<void> {
+    await prisma.user.updateMany({
+        data: { recipientId: null },
+    });
+
+    await prisma.user.deleteMany();
+}
+
 function shuffleInPlace<T>(arr: T[]): void {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));

@@ -19,6 +19,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { ArrowLeft, Menu } from "lucide-react";
+import Link from "next/link";
 
 type UserRow = {
     id: string;
@@ -165,6 +167,28 @@ export default function AdminPage() {
         }
     }
 
+    async function deleteAll() {
+        if (!window.confirm("Delete all users? This cannot be undone.")) return;
+
+        setLoading(true);
+        setError("");
+        try {
+            const response = await request("/api/admin/users", {
+                method: "DELETE",
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setError(payload?.error ?? "Failed to delete all users");
+                return;
+            }
+            await loadUsers();
+        } catch {
+            setError("Failed to delete all users");
+        } finally {
+            setLoading(false);
+        }
+    }
+
     if (!isUnlocked) {
         return (
             <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6">
@@ -199,7 +223,17 @@ export default function AdminPage() {
     return (
         <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl font-semibold">Admin - Easter Draw</h1>
+                <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="icon-sm">
+                        <Link href="/" aria-label="Back to menu">
+                            <ArrowLeft />
+                        </Link>
+                    </Button>
+                    <h1 className="text-2xl font-semibold">Admin - Easter Draw</h1>
+                    <Button variant="ghost" size="icon-sm" aria-label="Menu">
+                        <Menu />
+                    </Button>
+                </div>
                 <div className="flex gap-2">
                     <Button
                         onClick={loadUsers}
@@ -213,6 +247,13 @@ export default function AdminPage() {
                         disabled={loading || !hasUsers}
                     >
                         Run Draw Again
+                    </Button>
+                    <Button
+                        onClick={deleteAll}
+                        variant="destructive"
+                        disabled={loading || !hasUsers}
+                    >
+                        Delete All
                     </Button>
                 </div>
             </div>

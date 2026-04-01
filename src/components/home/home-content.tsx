@@ -10,7 +10,9 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "motion/react";
+import { Home as HomeIcon } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { HomeIntroSection } from "@/components/home/home-intro-section";
 import { HomeModals } from "@/components/home/home-modals";
 import { HomeRevealBackButton } from "@/components/home/home-reveal-back-button";
@@ -418,6 +420,21 @@ export function HomeContent() {
         setView("intro");
     }
 
+    /** Base URL only — no query string; clears room/reveal state for a clean landing. */
+    function goHome() {
+        startTransition(() => {
+            router.push("/");
+        });
+        lastFetchedRef.current = { giver: "", room: "" };
+        setActiveGiverId("");
+        setActiveRoomId("");
+        setRoomInput("");
+        setRoomTitle(null);
+        setResult(null);
+        setError("");
+        setView("intro");
+    }
+
     function replaceUrlWithGiverId(giverId: string, roomForUrl: string) {
         const params = new URLSearchParams(searchParams.toString());
         params.set("giverId", giverId);
@@ -615,12 +632,25 @@ export function HomeContent() {
     return (
         <div className="fixed inset-0 overflow-hidden bg-zinc-950 text-zinc-100 dark">
             <main className="relative mx-auto flex h-dvh w-full max-w-5xl items-center justify-center overflow-hidden px-6 py-6 sm:px-10 sm:py-10">
-                <HomeRevealBackButton
-                    show={showReveal}
-                    screenKey={currentScreenKey}
-                    isRouting={isRouting}
-                    onBack={replaceUrlWithoutGiverId}
-                />
+                <div className="absolute left-4 top-4 z-30 flex items-center gap-2 sm:left-6 sm:top-6">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="rounded-full shadow-sm"
+                        onClick={goHome}
+                        aria-label="Home — open the main page"
+                    >
+                        <HomeIcon className="h-5 w-5" aria-hidden />
+                    </Button>
+                    <HomeRevealBackButton
+                        embedded
+                        show={showReveal}
+                        screenKey={currentScreenKey}
+                        isRouting={isRouting}
+                        onBack={replaceUrlWithoutGiverId}
+                    />
+                </div>
 
                 <HomeModals
                     modal={modal}

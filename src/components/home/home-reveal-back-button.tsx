@@ -10,6 +10,8 @@ type Props = {
     screenKey: string;
     isRouting: boolean;
     onBack: () => void;
+    /** When true, no absolute positioning — place inside a parent row (e.g. next to Home). */
+    embedded?: boolean;
 };
 
 export function HomeRevealBackButton({
@@ -17,6 +19,7 @@ export function HomeRevealBackButton({
     screenKey,
     isRouting,
     onBack,
+    embedded = false,
 }: Props) {
     return (
         <AnimatePresence mode="wait" initial={false}>
@@ -27,7 +30,11 @@ export function HomeRevealBackButton({
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    className="absolute left-4 top-4 z-30 sm:left-6 sm:top-6"
+                    className={
+                        embedded
+                            ? "relative"
+                            : "absolute left-4 top-4 z-30 sm:left-6 sm:top-6"
+                    }
                 >
                     <Button
                         type="button"

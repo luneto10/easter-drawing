@@ -420,19 +420,12 @@ export function HomeContent() {
         setView("intro");
     }
 
-    /** Base URL only — no query string; clears room/reveal state for a clean landing. */
+    /** Base URL only — full navigation so query params are cleared.
+     *  `router.push("/")` is often a no-op on `/` when only `?room=` differs, so Next keeps
+     *  the old search string and effects re-apply `room` from `useSearchParams()`.
+     */
     function goHome() {
-        startTransition(() => {
-            router.push("/");
-        });
-        lastFetchedRef.current = { giver: "", room: "" };
-        setActiveGiverId("");
-        setActiveRoomId("");
-        setRoomInput("");
-        setRoomTitle(null);
-        setResult(null);
-        setError("");
-        setView("intro");
+        window.location.assign("/");
     }
 
     function replaceUrlWithGiverId(giverId: string, roomForUrl: string) {

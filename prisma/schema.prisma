@@ -8,13 +8,42 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  name        String
-  email       String?  @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  /// Who this user gives to (null until they draw).
-  recipientId String?  @unique @map("recipient_id")
-  recipient   User?    @relation("DrawAssignment", fields: [recipientId], references: [id])
-  drawnBy     User?    @relation("DrawAssignment")
+  id        String   @id @default(uuid())
+  name      String
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships    UserOnRoom[] @relation("MembershipUser")
+  roomRecipients UserOnRoom[] @relation("RoomDrawRecipient")
+  roomsCreated   Room[]       @relation("RoomCreator")
+}
+
+model Room {
+  id                 String   @id @default(uuid())
+  title              String
+  organizationName   String   @default("BRASA at UNL") @map("organization_name")
+  eventName          String   @default("Easter") @map("event_name")
+  adminKey           String   @unique @map("admin_key")
+  drawEnabled        Boolean  @default(true) @map("draw_enabled")
+  creatorId    String?  @map("creator_id")
+  creator      User?    @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships UserOnRoom[]
+}
+
+model UserOnRoom {
+  userId      String
+  roomId      String
+  recipientId String? @map("recipient_id")
+
+  user      User  @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
+  room      Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  recipient User? @relation("RoomDrawRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@id([userId, roomId])
+  @@unique([roomId, recipientId])
+  @@index([roomId])
 }

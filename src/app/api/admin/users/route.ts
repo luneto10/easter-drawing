@@ -1,21 +1,20 @@
 import { createUserBodySchema } from "@/server/application/dto/create-user-body";
-import { toUserListItem } from "@/server/application/dto/user-list-item";
 import {
-    createUser,
-    deleteAllUsers,
-    listUsers,
+    createUserInRoom,
+    deleteAllMembersInRoom,
 } from "@/server/application/use-cases/users";
-import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
+import { listRoomMembers } from "@/server/application/use-cases/rooms";
+import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     try {
-        const users = await listUsers();
-        return NextResponse.json(users.map(toUserListItem));
+        const users = await listRoomMembers(auth.roomId);
+        return NextResponse.json(users);
     } catch (error) {
         console.error(error);
         return NextResponse.json(
@@ -26,8 +25,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     let body: unknown;
     try {
@@ -45,8 +44,14 @@ export async function POST(request: Request) {
     }
 
     try {
-        const user = await createUser(parsed.data.name, parsed.data.email ?? null);
-        return NextResponse.json(toUserListItem(user), { status: 201 });
+        const user = await createUserInRoom(
+            auth.roomId,
+            parsed.data.name,
+            parsed.data.email ?? null,
+        );
+        const members = await listRoomMembers(auth.roomId);
+        const row = members.find((m) => m.id === user.id)!;
+        return NextResponse.json(row, { status: 201 });
     } catch (error) {
         if (error instanceof DomainError) {
             return NextResponse.json({ error: error.message }, { status: 400 });
@@ -60,11 +65,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     try {
-        await deleteAllUsers();
+        await deleteAllMembersInRoom(auth.roomId);
         return NextResponse.json({ ok: true });
     } catch (error) {
         console.error(error);

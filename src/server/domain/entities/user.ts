@@ -9,7 +9,6 @@ export class User {
         readonly id: string,
         readonly name: string,
         readonly email: string | null,
-        readonly recipientId: string | null,
         readonly createdAt: Date,
     ) {}
 
@@ -18,14 +17,12 @@ export class User {
         id: string;
         name: string;
         email: string | null;
-        recipientId: string | null;
         createdAt: Date;
     }) {
         return new User(
             props.id,
             User.normalizeName(props.name),
             User.normalizeEmail(props.email),
-            props.recipientId,
             props.createdAt,
         );
     }
@@ -46,13 +43,8 @@ export class User {
             crypto.randomUUID(),
             normalized,
             User.normalizeEmail(email),
-            null,
             new Date(),
         );
-    }
-
-    get hasPickedRecipient(): boolean {
-        return this.recipientId !== null;
     }
 
     private static normalizeName(name: string): string {

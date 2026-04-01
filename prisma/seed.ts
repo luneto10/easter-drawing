@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "../generated/prisma/client";
+import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
 
@@ -10,26 +10,31 @@ const prisma = new PrismaClient({
     adapter,
 });
 
-/** Break draw links before delete (self-referencing FK on recipient_id). */
-async function resetUsers() {
-    await prisma.user.updateMany({
-        data: { recipientId: null } satisfies Prisma.UserUncheckedUpdateManyInput,
-    });
-    await prisma.user.deleteMany();
-}
-
-/** Seeds users with no assignments (`recipient_id` stays null). */
+/** Seeds a demo room with users (no draw assignments). */
 export async function main() {
-    await resetUsers();
+    await prisma.userOnRoom.deleteMany();
+    await prisma.room.deleteMany();
+    await prisma.user.deleteMany();
 
-    const users: Prisma.UserUncheckedCreateInput[] = [
-        { name: "Alice", email: "alice@example.com" },
-        { name: "Bob", email: "bob@example.com" },
-        { name: "Carol", email: "carol@example.com" },
-        { name: "Dave", email: "dave@example.com" },
-    ];
+    const alice = await prisma.user.create({
+        data: { name: "Alice", email: "alice@example.com" },
+    });
+    const bob = await prisma.user.create({
+        data: { name: "Bob", email: "bob@example.com" },
+    });
 
-    await Promise.all(users.map((user) => prisma.user.create({ data: user })));
+    const room = await prisma.room.create({
+        data: {
+            title: "Demo room",
+            adminKey: "demo-admin-key-replace-in-production",
+            creatorId: alice.id,
+            memberships: {
+                create: [{ userId: alice.id }, { userId: bob.id }],
+            },
+        },
+    });
+
+    console.log("Seeded room:", room.id);
 }
 
 main()

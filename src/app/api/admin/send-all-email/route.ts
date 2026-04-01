@@ -1,29 +1,35 @@
+import { listRoomMembers } from "@/server/application/use-cases/rooms";
 import {
-    getRecipientForGiver,
-    listUsers,
+    getRecipientForGiverInRoom,
 } from "@/server/application/use-cases/users";
 import { buildDrawEmailTemplate } from "@/server/application/services/draw-email-template";
 import { sendEmail } from "@/server/infrastructure/adapters/email";
-import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
+import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     try {
-        const users = await listUsers();
-        const withEmail = users.filter((user) => Boolean(user.email));
+        const members = await listRoomMembers(auth.roomId);
+        const withEmail = members.filter((m) => Boolean(m.email));
 
         const appUrl = process.env.APP_URL ?? "";
 
         const results = await Promise.allSettled(
             withEmail.map(async (giver) => {
-                const assignment = await getRecipientForGiver(giver.id);
+                const assignment = await getRecipientForGiverInRoom(
+                    giver.id,
+                    auth.roomId,
+                );
                 const { subject, html } = buildDrawEmailTemplate({
                     giverName: assignment?.giver.name ?? giver.name,
                     giverId: assignment?.giver.id ?? giver.id,
-                    recipientName: assignment?.recipient.name,
+                    recipientName: assignment?.recipient?.name,
+                    roomId: auth.roomId,
+                    organizationName: auth.organizationName,
+                    eventName: auth.eventName,
                     appUrl,
                 });
 

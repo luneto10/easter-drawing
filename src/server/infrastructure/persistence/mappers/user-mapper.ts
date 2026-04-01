@@ -3,7 +3,7 @@ import { User } from "@/server/domain/entities/user";
 
 export type UserRow = Pick<
     Prisma.UserGetPayload<object>,
-    "id" | "name" | "email" | "recipientId" | "createdAt"
+    "id" | "name" | "email" | "createdAt"
 >;
 
 export function userRowToDomain(row: UserRow): User {
@@ -11,7 +11,6 @@ export function userRowToDomain(row: UserRow): User {
         id: row.id,
         name: row.name,
         email: row.email,
-        recipientId: row.recipientId,
         createdAt: row.createdAt,
     });
 }

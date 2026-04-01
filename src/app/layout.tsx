@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Easter Draw",
-  description: "Easter Draw app",
+  title: "Gift exchange",
+  description: "Organize a gift exchange for your group",
 };
 
 export default function RootLayout({

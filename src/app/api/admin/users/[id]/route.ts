@@ -1,9 +1,6 @@
-import { toUserListItem } from "@/server/application/dto/user-list-item";
-import {
-    deleteUserById,
-    updateUserProfile,
-} from "@/server/application/use-cases/users";
-import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
+import { updateUserProfile } from "@/server/application/use-cases/users";
+import { listRoomMembers, removeMemberFromRoom } from "@/server/application/use-cases/rooms";
+import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -23,8 +20,8 @@ const updateUserBodySchema = z.object({
 });
 
 export async function PATCH(request: Request, context: RouteContext) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
 
@@ -52,7 +49,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
-        return NextResponse.json(toUserListItem(user));
+        const members = await listRoomMembers(auth.roomId);
+        const row = members.find((m) => m.id === id);
+        if (!row) {
+            return NextResponse.json({ error: "User not in this room" }, { status: 404 });
+        }
+        return NextResponse.json(row);
     } catch (error) {
         if (error instanceof DomainError) {
             return NextResponse.json({ error: error.message }, { status: 400 });
@@ -66,13 +68,13 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
 
     try {
-        const deleted = await deleteUserById(id);
+        const deleted = await removeMemberFromRoom(auth.roomId, id);
         if (!deleted) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }

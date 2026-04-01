@@ -1,5 +1,6 @@
 import { User } from "@/server/domain/entities/user";
 import { DomainError } from "@/server/shared/errors/domain-error";
+import { normalizeEntityId } from "@/server/shared/ids/normalize-entity-id";
 import prisma from "../../../../lib/prisma";
 import {
     userRowToDomain,
@@ -14,8 +15,9 @@ export async function listUsers(): Promise<User[]> {
 }
 
 export async function getUserById(id: string): Promise<User | null> {
+    const uid = normalizeEntityId(id);
     const row = await prisma.user.findUnique({
-        where: { id },
+        where: { id: uid },
     });
     if (!row) return null;
     return userRowToDomain(row);
@@ -27,26 +29,44 @@ export async function createUser(
 ): Promise<User> {
     const user = User.register(name, email);
     const row = await prisma.user.create({
-        data: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-        },
+        data: userToCreateInput(user),
     });
     return userRowToDomain(row);
 }
 
-export async function updateUserName(id: string, name: string): Promise<User | null> {
+export async function createUserInRoom(
+    roomId: string,
+    name: string,
+    email?: string | null,
+): Promise<User> {
+    const rid = normalizeEntityId(roomId);
+    const room = await prisma.room.findUnique({ where: { id: rid } });
+    if (!room) {
+        throw new DomainError("Room not found");
+    }
+
+    const user = await createUser(name, email);
+    await prisma.userOnRoom.create({
+        data: { userId: user.id, roomId: rid },
+    });
+    return user;
+}
+
+export async function updateUserName(
+    id: string,
+    name: string,
+): Promise<User | null> {
     const normalizedName = name.trim();
     if (!normalizedName) {
         throw new DomainError("Name is required");
     }
 
-    const existing = await prisma.user.findUnique({ where: { id } });
+    const uid = normalizeEntityId(id);
+    const existing = await prisma.user.findUnique({ where: { id: uid } });
     if (!existing) return null;
 
     const row = await prisma.user.update({
-        where: { id },
+        where: { id: uid },
         data: { name: normalizedName },
     });
 
@@ -63,13 +83,13 @@ export async function updateUserProfile(
         throw new DomainError("Name is required");
     }
 
-    // Reuse domain validation rules.
     const validated = User.register(normalizedName, email);
-    const existing = await prisma.user.findUnique({ where: { id } });
+    const uid = normalizeEntityId(id);
+    const existing = await prisma.user.findUnique({ where: { id: uid } });
     if (!existing) return null;
 
     const row = await prisma.user.update({
-        where: { id },
+        where: { id: uid },
         data: {
             name: validated.name,
             email: validated.email,
@@ -80,29 +100,63 @@ export async function updateUserProfile(
 }
 
 export async function deleteUserById(id: string): Promise<boolean> {
-    const existing = await prisma.user.findUnique({ where: { id } });
+    const uid = normalizeEntityId(id);
+    const existing = await prisma.user.findUnique({ where: { id: uid } });
     if (!existing) return false;
 
     await prisma.$transaction(async (tx) => {
-        await tx.user.updateMany({
-            where: { recipientId: id },
+        await tx.userOnRoom.updateMany({
+            where: { recipientId: uid },
             data: { recipientId: null },
         });
 
+        await tx.userOnRoom.deleteMany({
+            where: { userId: uid },
+        });
+
+        await tx.room.updateMany({
+            where: { creatorId: uid },
+            data: { creatorId: null },
+        });
+
         await tx.user.delete({
-            where: { id },
+            where: { id: uid },
         });
     });
 
     return true;
 }
 
-export async function deleteAllUsers(): Promise<void> {
-    await prisma.user.updateMany({
-        data: { recipientId: null },
+export async function deleteAllMembersInRoom(roomId: string): Promise<void> {
+    const rid = normalizeEntityId(roomId);
+    const memberRows = await prisma.userOnRoom.findMany({
+        where: { roomId: rid },
+        select: { userId: true },
     });
+    const userIds = [...new Set(memberRows.map((m) => m.userId))];
 
-    await prisma.user.deleteMany();
+    await prisma.$transaction(async (tx) => {
+        await tx.userOnRoom.updateMany({
+            where: { roomId: rid },
+            data: { recipientId: null },
+        });
+        await tx.userOnRoom.deleteMany({
+            where: { roomId: rid },
+        });
+
+        for (const userId of userIds) {
+            const remaining = await tx.userOnRoom.count({ where: { userId } });
+            if (remaining === 0) {
+                await tx.room.updateMany({
+                    where: { creatorId: userId },
+                    data: { creatorId: null },
+                });
+                await tx.user
+                    .delete({ where: { id: userId } })
+                    .catch(() => undefined);
+            }
+        }
+    });
 }
 
 function shuffleInPlace<T>(arr: T[]): void {
@@ -114,13 +168,23 @@ function shuffleInPlace<T>(arr: T[]): void {
     }
 }
 
-export async function drawnUsers(): Promise<Record<string, User>> {
-    const drawnUsersPrisma = await prisma.user.findMany();
-    if (drawnUsersPrisma.length < 2) {
-        throw new DomainError("Need at least two users to run a draw");
+export async function drawnUsersInRoom(
+    roomId: string,
+): Promise<Record<string, User>> {
+    const rid = normalizeEntityId(roomId);
+    const memberships = await prisma.userOnRoom.findMany({
+        where: { roomId: rid },
+        include: { user: true },
+        orderBy: { userId: "asc" },
+    });
+
+    if (memberships.length < 2) {
+        throw new DomainError(
+            "Need at least two people in the room to run a draw",
+        );
     }
 
-    const drawnUsers: User[] = drawnUsersPrisma.map(userRowToDomain);
+    const drawnUsers: User[] = memberships.map((m) => userRowToDomain(m.user));
 
     const shuffled = [...drawnUsers];
     shuffleInPlace(shuffled);
@@ -145,38 +209,73 @@ export async function drawnUsers(): Promise<Record<string, User>> {
     return assignments;
 }
 
-export async function assignUsers(): Promise<User[]> {
-    const assignments = await drawnUsers();
+export async function assignUsersInRoom(roomId: string): Promise<void> {
+    const rid = normalizeEntityId(roomId);
+    const assignments = await drawnUsersInRoom(rid);
 
     await prisma.$transaction(async (tx) => {
-        await tx.user.updateMany({
+        await tx.userOnRoom.updateMany({
+            where: { roomId: rid },
             data: { recipientId: null },
         });
         await Promise.all(
             Object.entries(assignments).map(([giverId, receiver]) =>
-                tx.user.update({
-                    where: { id: giverId },
+                tx.userOnRoom.update({
+                    where: {
+                        userId_roomId: { userId: giverId, roomId: rid },
+                    },
                     data: { recipientId: receiver.id },
                 }),
             ),
         );
     });
-
-    return listUsers();
 }
 
-export async function getRecipientForGiver(
+/**
+ * Recipient reveal for a giver in a room.
+ * Returns null when the giver is in the room but has no assignment yet (draw not run).
+ */
+export async function getRecipientForGiverInRoom(
     giverId: string,
+    roomId: string,
 ): Promise<{ giver: User; recipient: User } | null> {
-    const row = await prisma.user.findUnique({
-        where: { id: giverId },
-        include: { recipient: true },
+    const gid = normalizeEntityId(giverId);
+    const rid = normalizeEntityId(roomId);
+
+    const room = await prisma.room.findUnique({
+        where: { id: rid },
+        select: { drawEnabled: true },
+    });
+    if (!room) {
+        throw new DomainError(
+            "Room not found. Check the room ID in the link — it must match exactly.",
+        );
+    }
+    if (!room.drawEnabled) {
+        throw new DomainError("Draw is closed for this room.");
+    }
+
+    const row = await prisma.userOnRoom.findUnique({
+        where: {
+            userId_roomId: { userId: gid, roomId: rid },
+        },
+        include: {
+            user: true,
+            recipient: true,
+        },
     });
 
-    if (!row || !row.recipient) return null;
+    if (!row) {
+        throw new DomainError(
+            "You are not in this room yet. Join the room from the home page, then try again.",
+        );
+    }
+    if (!row.recipient) {
+        return null;
+    }
 
     return {
-        giver: userRowToDomain(row),
+        giver: userRowToDomain(row.user),
         recipient: userRowToDomain(row.recipient),
     };
 }

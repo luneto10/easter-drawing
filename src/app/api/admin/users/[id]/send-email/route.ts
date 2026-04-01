@@ -1,10 +1,10 @@
 import {
-    getRecipientForGiver,
+    getRecipientForGiverInRoom,
     getUserById,
 } from "@/server/application/use-cases/users";
 import { buildDrawEmailTemplate } from "@/server/application/services/draw-email-template";
 import { sendEmail } from "@/server/infrastructure/adapters/email";
-import { ensureAdminCode } from "@/server/infrastructure/config/admin-auth";
+import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
 import { NextResponse } from "next/server";
 
 type RouteContext = {
@@ -12,8 +12,8 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-    const unauthorized = ensureAdminCode(request);
-    if (unauthorized) return unauthorized;
+    const auth = await ensureRoomAdmin(request);
+    if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
 
@@ -30,11 +30,14 @@ export async function POST(request: Request, context: RouteContext) {
             );
         }
 
-        const assignment = await getRecipientForGiver(id);
+        const assignment = await getRecipientForGiverInRoom(id, auth.roomId);
         const { subject, html } = buildDrawEmailTemplate({
             giverName: assignment?.giver.name ?? giver.name,
             giverId: assignment?.giver.id ?? giver.id,
-            recipientName: assignment?.recipient.name,
+            recipientName: assignment?.recipient?.name,
+            roomId: auth.roomId,
+            organizationName: auth.organizationName,
+            eventName: auth.eventName,
             appUrl: process.env.APP_URL,
         });
 

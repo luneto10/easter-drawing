@@ -1,3 +1,4 @@
+import { toUserListItem } from "@/server/application/dto/user-list-item";
 import { getUserById } from "@/server/application/use-cases/users";
 import { NextResponse } from "next/server";
 
@@ -16,7 +17,7 @@ export async function GET(_request: Request, context: RouteContext) {
                 { status: 404 },
             );
         }
-        return NextResponse.json(user);
+        return NextResponse.json(toUserListItem(user));
     } catch (error) {
         console.error(error);
         return NextResponse.json(

@@ -81,13 +81,13 @@ export default function JoinPage() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Your name"
-                            className="h-12 text-amber-950"
+                            className="h-12 border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-300"
                         />
                         <Input
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Email (name@email.com)"
-                            className="h-12 text-amber-950"
+                            className="h-12 border-zinc-800 bg-zinc-950 text-zinc-100 placeholder:text-zinc-300"
                         />
                         <Button
                             type="submit"

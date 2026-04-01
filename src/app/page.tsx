@@ -225,8 +225,15 @@ function HomeContent() {
             ? `${pathname}?${params.toString()}`
             : pathname;
 
+        // Update UI immediately so the back action feels reliable even when opened directly from email links.
+        lastFetchedIdRef.current = "";
+        setActiveGiverId("");
+        setResult(null);
+        setError("");
+        setView("intro");
+
         startTransition(() => {
-            router.replace(nextUrl);
+            router.push(nextUrl);
         });
     }
 
@@ -235,7 +242,7 @@ function HomeContent() {
         params.set("giverId", giverId);
 
         startTransition(() => {
-            router.replace(`${pathname}?${params.toString()}`);
+            router.push(`${pathname}?${params.toString()}`);
         });
     }
 

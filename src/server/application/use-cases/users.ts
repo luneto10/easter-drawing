@@ -32,6 +32,41 @@ export async function createUser(name: string): Promise<User> {
     return userRowToDomain(row);
 }
 
+export async function updateUserName(id: string, name: string): Promise<User | null> {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+        throw new DomainError("Name is required");
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) return null;
+
+    const row = await prisma.user.update({
+        where: { id },
+        data: { name: normalizedName },
+    });
+
+    return userRowToDomain(row);
+}
+
+export async function deleteUserById(id: string): Promise<boolean> {
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) return false;
+
+    await prisma.$transaction(async (tx) => {
+        await tx.user.updateMany({
+            where: { recipientId: id },
+            data: { recipientId: null },
+        });
+
+        await tx.user.delete({
+            where: { id },
+        });
+    });
+
+    return true;
+}
+
 function shuffleInPlace<T>(arr: T[]): void {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -90,4 +125,20 @@ export async function assignUsers(): Promise<User[]> {
     });
 
     return listUsers();
+}
+
+export async function getRecipientForGiver(
+    giverId: string,
+): Promise<{ giver: User; recipient: User } | null> {
+    const row = await prisma.user.findUnique({
+        where: { id: giverId },
+        include: { recipient: true },
+    });
+
+    if (!row || !row.recipient) return null;
+
+    return {
+        giver: userRowToDomain(row),
+        recipient: userRowToDomain(row.recipient),
+    };
 }

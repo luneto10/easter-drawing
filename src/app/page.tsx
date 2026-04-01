@@ -233,7 +233,7 @@ function HomeContent() {
         setView("intro");
 
         startTransition(() => {
-            router.push(nextUrl);
+            router.replace(nextUrl);
         });
     }
 
@@ -462,9 +462,7 @@ function HomeContent() {
 export default function Home() {
     return (
         <Suspense
-            fallback={
-                <div className="h-dvh bg-zinc-950 text-zinc-100 dark" />
-            }
+            fallback={<div className="h-dvh bg-zinc-950 text-zinc-100 dark" />}
         >
             <HomeContent />
         </Suspense>

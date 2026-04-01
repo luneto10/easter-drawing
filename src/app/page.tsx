@@ -443,7 +443,9 @@ function HomeContent() {
 export default function Home() {
     return (
         <Suspense
-            fallback={<div className="min-h-screen bg-zinc-950 text-zinc-100 dark" />}
+            fallback={
+                <div className="min-h-screen bg-zinc-950 text-zinc-100 dark" />
+            }
         >
             <HomeContent />
         </Suspense>

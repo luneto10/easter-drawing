@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { LogIn, LogOut, DoorOpen, PlusCircle, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { HomeRoomCard } from "@/components/home/home-room-card";
 import { screenVariants } from "@/components/home/home-motion";
 import type { UserRoomListItem } from "@/components/home/home-types";
 
@@ -244,66 +245,17 @@ export function HomeIntroSection({
                             an ID.
                         </p>
                     ) : null}
-                    <ul className="space-y-2">
-                        {myRooms.map((room) => {
-                            const selected = roomIdSummary === room.id;
-                            return (
-                                <li
-                                    key={room.id}
-                                    className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
-                                        selected
-                                            ? "border-zinc-100 bg-zinc-900/40"
-                                            : "border-zinc-800 bg-zinc-950/50"
-                                    }`}
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate font-medium text-zinc-100">
-                                            {room.title}
-                                        </p>
-                                        <p className="truncate text-xs text-zinc-500">
-                                            {room.organizationName} ·{" "}
-                                            {room.eventName}
-                                        </p>
-                                        <p
-                                            className={`mt-1 text-xs font-medium ${
-                                                room.drawEnabled
-                                                    ? "text-emerald-400"
-                                                    : "text-red-400"
-                                            }`}
-                                        >
-                                            {room.drawEnabled
-                                                ? "Draw open — new joins allowed"
-                                                : "Draw closed — cannot join or reveal"}
-                                        </p>
-                                    </div>
-                                    <div className="flex shrink-0 gap-2">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="secondary"
-                                            className="rounded-lg"
-                                            onClick={() => onSelectMyRoom(room)}
-                                        >
-                                            Join
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            className="rounded-lg"
-                                            disabled={!room.drawEnabled}
-                                            title={
-                                                room.drawEnabled
-                                                    ? "See who you give to"
-                                                    : "Organizer closed this draw"
-                                            }
-                                            onClick={() => onRevealMyRoom(room)}
-                                        >
-                                            Reveal
-                                        </Button>
-                                    </div>
-                                </li>
-                            );
-                        })}
+                    <ul className="space-y-3">
+                        {myRooms.map((room) => (
+                            <li key={room.id}>
+                                <HomeRoomCard
+                                    room={room}
+                                    selected={roomIdSummary === room.id}
+                                    onSelect={() => onSelectMyRoom(room)}
+                                    onReveal={() => onRevealMyRoom(room)}
+                                />
+                            </li>
+                        ))}
                     </ul>
                 </div>
             ) : null}

@@ -262,12 +262,12 @@ function HomeContent() {
     }
 
     if (view === "boot") {
-        return <div className="min-h-screen bg-zinc-950 text-zinc-100 dark" />;
+        return <div className="h-dvh bg-zinc-950 text-zinc-100 dark" />;
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-100 dark">
-            <main className="relative mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center overflow-hidden px-6 py-20 sm:px-10">
+        <div className="fixed inset-0 overflow-hidden bg-zinc-950 text-zinc-100 dark">
+            <main className="relative mx-auto flex h-dvh w-full max-w-5xl items-center justify-center overflow-hidden px-6 py-6 sm:px-10 sm:py-10">
                 <AnimatePresence mode="wait" initial={false}>
                     {showReveal ? (
                         <motion.div
@@ -456,7 +456,7 @@ export default function Home() {
     return (
         <Suspense
             fallback={
-                <div className="min-h-screen bg-zinc-950 text-zinc-100 dark" />
+                <div className="h-dvh bg-zinc-950 text-zinc-100 dark" />
             }
         >
             <HomeContent />

@@ -236,37 +236,40 @@ export default function AdminPage() {
 
     if (!isUnlocked) {
         return (
-            <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6">
-                <Card className="w-full">
-                    <CardHeader>
-                        <CardTitle>Admin</CardTitle>
-                        <CardDescription>
-                            Enter admin code to manage users.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={unlock} className="space-y-4">
-                            <Input
-                                value={code}
-                                onChange={(e) => setCode(e.target.value)}
-                                placeholder="Admin code"
-                                type="password"
-                            />
-                            <Button className="w-full" type="submit">
-                                Enter
-                            </Button>
-                            {error ? (
-                                <p className="text-sm text-red-500">{error}</p>
-                            ) : null}
-                        </form>
-                    </CardContent>
-                </Card>
+            <main className="min-h-dvh w-full bg-zinc-50 text-zinc-900">
+                <div className="mx-auto flex min-h-dvh w-full max-w-md items-center justify-center px-6">
+                    <Card className="w-full">
+                        <CardHeader>
+                            <CardTitle>Admin</CardTitle>
+                            <CardDescription>
+                                Enter admin code to manage users.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={unlock} className="space-y-4">
+                                <Input
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value)}
+                                    placeholder="Admin code"
+                                    type="password"
+                                />
+                                <Button className="w-full" type="submit">
+                                    Enter
+                                </Button>
+                                {error ? (
+                                    <p className="text-sm text-red-500">{error}</p>
+                                ) : null}
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
             </main>
         );
     }
 
     return (
-        <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6">
+        <main className="min-h-dvh w-full bg-zinc-50 text-zinc-900">
+            <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                     <Button asChild variant="outline" size="icon-sm">
@@ -331,10 +334,10 @@ export default function AdminPage() {
 
             {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-            <Card className="mx-auto w-full max-w-4xl">
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
+                <Card className="mx-auto w-full max-w-4xl">
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
@@ -459,10 +462,11 @@ export default function AdminPage() {
                                     );
                                 })}
                             </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </main>
     );
 }

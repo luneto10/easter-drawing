@@ -158,24 +158,62 @@ export async function deleteUserById(id: string): Promise<boolean> {
     return true;
 }
 
-export async function deleteAllMembersInRoom(roomId: string): Promise<void> {
+/** Remove every member except the room organizer. Deletes user accounts that end up with no room memberships. */
+export async function removeAllMembersExceptCreator(roomId: string): Promise<void> {
     const rid = normalizeEntityId(roomId);
+    const room = await prisma.room.findUnique({
+        where: { id: rid },
+        select: { creatorId: true },
+    });
+    if (!room) {
+        throw new DomainError("Room not found");
+    }
+
+    const creatorId = room.creatorId;
     const memberRows = await prisma.userOnRoom.findMany({
         where: { roomId: rid },
         select: { userId: true },
     });
-    const userIds = [...new Set(memberRows.map((m) => m.userId))];
+    const toRemove = [
+        ...new Set(memberRows.map((m) => m.userId)),
+    ].filter((id) => id !== creatorId);
+
+    if (toRemove.length === 0) {
+        return;
+    }
 
     await prisma.$transaction(async (tx) => {
-        await tx.userOnRoom.updateMany({
-            where: { roomId: rid },
-            data: { recipientId: null },
-        });
+        for (const uid of toRemove) {
+            await tx.userOnRoom.updateMany({
+                where: { roomId: rid, recipientId: uid },
+                data: { recipientId: null },
+            });
+        }
+
         await tx.userOnRoom.deleteMany({
-            where: { roomId: rid },
+            where: { roomId: rid, userId: { in: toRemove } },
         });
 
-        for (const userId of userIds) {
+        const remainingInRoom = await tx.userOnRoom.findMany({
+            where: { roomId: rid },
+            select: { userId: true, recipientId: true },
+        });
+        const validIds = new Set(remainingInRoom.map((r) => r.userId));
+        for (const row of remainingInRoom) {
+            if (row.recipientId && !validIds.has(row.recipientId)) {
+                await tx.userOnRoom.update({
+                    where: {
+                        userId_roomId: {
+                            userId: row.userId,
+                            roomId: rid,
+                        },
+                    },
+                    data: { recipientId: null },
+                });
+            }
+        }
+
+        for (const userId of toRemove) {
             const remaining = await tx.userOnRoom.count({ where: { userId } });
             if (remaining === 0) {
                 await tx.user
@@ -183,8 +221,6 @@ export async function deleteAllMembersInRoom(roomId: string): Promise<void> {
                     .catch(() => undefined);
             }
         }
-
-        await tx.room.delete({ where: { id: rid } });
     });
 }
 

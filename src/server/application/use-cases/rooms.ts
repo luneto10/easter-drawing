@@ -101,6 +101,16 @@ export async function removeMemberFromRoom(
     });
     if (!membership) return false;
 
+    const roomMeta = await prisma.room.findUnique({
+        where: { id: rid },
+        select: { creatorId: true },
+    });
+    if (roomMeta?.creatorId === uid) {
+        throw new DomainError(
+            "The organizer cannot be removed from this room.",
+        );
+    }
+
     await prisma.$transaction(async (tx) => {
         await tx.userOnRoom.updateMany({
             where: { roomId: rid, recipientId: uid },
@@ -153,7 +163,10 @@ export async function listRoomMembers(roomId: string): Promise<RoomMemberListIte
     const rid = normalizeEntityId(roomId);
     const rows = await prisma.userOnRoom.findMany({
         where: { roomId: rid },
-        include: { user: true },
+        include: {
+            user: true,
+            room: { select: { creatorId: true } },
+        },
         orderBy: { user: { createdAt: "asc" } },
     });
 
@@ -163,7 +176,38 @@ export async function listRoomMembers(roomId: string): Promise<RoomMemberListIte
         email: row.user.email,
         recipientId: row.recipientId,
         createdAt: row.user.createdAt.toISOString(),
+        isOrganizer: row.room.creatorId === row.userId,
     }));
+}
+
+/** Permanently delete the room and all memberships; organizer user row is kept. */
+export async function deleteRoom(roomId: string): Promise<void> {
+    const rid = normalizeEntityId(roomId);
+    const room = await prisma.room.findUnique({
+        where: { id: rid },
+        select: { id: true, creatorId: true },
+    });
+    if (!room) {
+        throw new DomainError("Room not found");
+    }
+
+    const memberRows = await prisma.userOnRoom.findMany({
+        where: { roomId: rid },
+        select: { userId: true },
+    });
+    const userIds = [...new Set(memberRows.map((m) => m.userId))];
+
+    await prisma.room.delete({ where: { id: rid } });
+
+    for (const userId of userIds) {
+        if (userId === room.creatorId) continue;
+        const remaining = await prisma.userOnRoom.count({ where: { userId } });
+        if (remaining === 0) {
+            await prisma.user
+                .delete({ where: { id: userId } })
+                .catch(() => undefined);
+        }
+    }
 }
 
 export type RoomPublicMeta = {

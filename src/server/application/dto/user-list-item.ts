@@ -24,4 +24,6 @@ export type RoomMemberListItem = {
     email: string | null;
     recipientId: string | null;
     createdAt: string;
+    /** Room creator (organizer); cannot be removed from this room via admin. */
+    isOrganizer: boolean;
 };

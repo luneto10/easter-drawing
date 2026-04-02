@@ -1,7 +1,7 @@
 import { createUserBodySchema } from "@/server/application/dto/create-user-body";
 import {
     createUserInRoom,
-    deleteAllMembersInRoom,
+    removeAllMembersExceptCreator,
 } from "@/server/application/use-cases/users";
 import { listRoomMembers } from "@/server/application/use-cases/rooms";
 import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
@@ -69,12 +69,15 @@ export async function DELETE(request: Request) {
     if (auth instanceof NextResponse) return auth;
 
     try {
-        await deleteAllMembersInRoom(auth.roomId);
+        await removeAllMembersExceptCreator(auth.roomId);
         return NextResponse.json({ ok: true });
     } catch (error) {
+        if (error instanceof DomainError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
         console.error(error);
         return NextResponse.json(
-            { error: "Failed to delete all users" },
+            { error: "Failed to remove participants" },
             { status: 500 },
         );
     }

@@ -81,6 +81,9 @@ export async function DELETE(request: Request, context: RouteContext) {
 
         return NextResponse.json({ ok: true });
     } catch (error) {
+        if (error instanceof DomainError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
         console.error(error);
         return NextResponse.json(
             { error: "Failed to delete user" },

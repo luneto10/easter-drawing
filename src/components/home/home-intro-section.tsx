@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { LogIn, LogOut, DoorOpen, PlusCircle, User } from "lucide-react";
+import {
+    LayoutDashboard,
+    LogIn,
+    LogOut,
+    DoorOpen,
+    PlusCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ParticipantAvatar } from "@/components/ui/participant-avatar";
 import { HomeRoomCard } from "@/components/home/home-room-card";
 import { screenVariants } from "@/components/home/home-motion";
+import { cn } from "@/lib/utils";
 import type { UserRoomListItem } from "@/components/home/home-types";
 
 type Props = {
@@ -65,7 +73,19 @@ export function HomeIntroSection({
             <span className="text-zinc-500">Checking room…</span>
         ) : null;
 
-    const initialLetter = profileName?.trim().charAt(0).toUpperCase() ?? null;
+    const selectedRoomFromList = useMemo(
+        () =>
+            roomIdSummary
+                ? myRooms.find((r) => r.id === roomIdSummary)
+                : undefined,
+        [myRooms, roomIdSummary],
+    );
+
+    const organizerAdminHref =
+        selectedRoomFromList?.adminKey != null &&
+        selectedRoomFromList.adminKey !== ""
+            ? `/admin?room=${encodeURIComponent(selectedRoomFromList.id)}&key=${encodeURIComponent(selectedRoomFromList.adminKey)}`
+            : null;
 
     /** No room selected → generic hero. With a room → organization (eyebrow) and event name (title) as they load. */
     const eyebrow =
@@ -95,65 +115,63 @@ export function HomeIntroSection({
                         {eyebrow}
                     </p>
                     {savedUserId ? (
-                        <button
-                            type="button"
-                            className="flex max-w-full items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-1.5 pl-1.5 pr-4 text-left shadow-sm transition-colors hover:border-zinc-600 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
-                            aria-label="Your profile — click to copy participant ID"
-                            title="Click to copy your participant ID"
-                            onClick={() => {
-                                void navigator.clipboard.writeText(savedUserId);
-                                setParticipantIdCopied(true);
-                                window.setTimeout(() => setParticipantIdCopied(false), 2000);
-                            }}
-                        >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-900">
-                                {profileLoading && !profileName ? (
-                                    <User
-                                        className="h-4 w-4 text-zinc-600"
-                                        aria-hidden
-                                    />
-                                ) : initialLetter ? (
-                                    initialLetter
-                                ) : (
-                                    <User
-                                        className="h-4 w-4 text-zinc-600"
-                                        aria-hidden
-                                    />
-                                )}
-                            </span>
-                            <div className="min-w-0 text-left">
-                                <p className="text-sm font-medium leading-tight text-zinc-100">
-                                    {profileLoading && !profileName
-                                        ? "Loading…"
-                                        : (profileName ?? "Participant")}
-                                </p>
-                                <p
-                                    className="mt-0.5 font-mono text-[10px] leading-snug break-all text-zinc-400"
-                                    aria-live="polite"
-                                >
-                                    {savedUserId}
-                                    {participantIdCopied ? (
-                                        <span className="ml-1.5 font-sans text-emerald-400">
-                                            · Copied
-                                        </span>
+                        <div className="flex max-w-full flex-col items-end gap-2">
+                            <button
+                                type="button"
+                                className="flex max-w-full items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-1.5 pl-1.5 pr-4 text-left shadow-sm transition-colors hover:border-zinc-600 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
+                                aria-label="Your profile — click to copy participant ID"
+                                title="Click to copy your participant ID"
+                                onClick={() => {
+                                    void navigator.clipboard.writeText(
+                                        savedUserId,
+                                    );
+                                    setParticipantIdCopied(true);
+                                    window.setTimeout(
+                                        () =>
+                                            setParticipantIdCopied(false),
+                                        2000,
+                                    );
+                                }}
+                            >
+                                <ParticipantAvatar
+                                    name={profileName}
+                                    loading={profileLoading}
+                                    size="md"
+                                />
+                                <div className="min-w-0 text-left">
+                                    <p className="text-sm font-medium leading-tight text-zinc-100">
+                                        {profileLoading && !profileName
+                                            ? "Loading…"
+                                            : (profileName ?? "Participant")}
+                                    </p>
+                                    <p
+                                        className={cn(
+                                            "mt-0.5 text-xs leading-snug",
+                                            participantIdCopied
+                                                ? "text-emerald-400"
+                                                : "text-zinc-500",
+                                        )}
+                                        aria-live="polite"
+                                    >
+                                        {participantIdCopied
+                                            ? "Copied to clipboard"
+                                            : "Click to copy your ID"}
+                                    </p>
+                                </div>
+                            </button>
+                            {roomLine ? (
+                                <p className="mt-2 max-w-[min(100%,16rem)] space-x-2 text-xs leading-snug text-zinc-500">
+                                    <span>{roomLine}</span>
+                                    {statusHint ? (
+                                        <span>· {statusHint}</span>
                                     ) : null}
                                 </p>
-                                {roomLine ? (
-                                    <p className="mt-0.5 max-w-[220px] space-x-2 truncate text-xs text-zinc-500 sm:max-w-xs">
-                                        <span className="text-zinc-500">
-                                            {roomLine}
-                                        </span>
-                                        {statusHint ? (
-                                            <span>· {statusHint}</span>
-                                        ) : null}
-                                    </p>
-                                ) : (
-                                    <p className="mt-0.5 text-xs text-amber-500/90">
-                                        Choose a room to continue
-                                    </p>
-                                )}
-                            </div>
-                        </button>
+                            ) : (
+                                <p className="mt-2 text-xs text-amber-500/90">
+                                    Choose a room to continue
+                                </p>
+                            )}
+                        </div>
                     ) : null}
                 </div>
 
@@ -215,6 +233,22 @@ export function HomeIntroSection({
                                 <DoorOpen className="mr-2 h-4 w-4" />
                                 Join room
                             </Button>
+                            {organizerAdminHref ? (
+                                <Button
+                                    asChild
+                                    type="button"
+                                    variant="secondary"
+                                    className="rounded-xl"
+                                >
+                                    <Link
+                                        href={organizerAdminHref}
+                                        aria-label="Open organizer dashboard"
+                                    >
+                                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                                        Organizer
+                                    </Link>
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 variant="outline"
@@ -251,6 +285,9 @@ export function HomeIntroSection({
                                 <HomeRoomCard
                                     room={room}
                                     selected={roomIdSummary === room.id}
+                                    isOrganizer={
+                                        savedUserId === room.creatorId
+                                    }
                                     onSelect={() => onSelectMyRoom(room)}
                                     onReveal={() => onRevealMyRoom(room)}
                                 />

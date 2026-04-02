@@ -1,13 +1,25 @@
 import prisma from "../../../../../lib/prisma";
-import { setRoomDrawEnabled } from "@/server/application/use-cases/rooms";
+import { patchRoomSettings } from "@/server/application/use-cases/rooms";
 import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-const patchBodySchema = z.object({
-    drawEnabled: z.boolean(),
-});
+const patchBodySchema = z
+    .object({
+        drawEnabled: z.boolean().optional(),
+        title: z.string().trim().min(1).max(200).optional(),
+        organizationName: z.string().trim().min(1).max(120).optional(),
+        eventName: z.string().trim().min(1).max(120).optional(),
+    })
+    .refine(
+        (d) =>
+            d.drawEnabled !== undefined ||
+            d.title !== undefined ||
+            d.organizationName !== undefined ||
+            d.eventName !== undefined,
+        { message: "At least one field is required" },
+    );
 
 export async function GET(request: Request) {
     const auth = await ensureRoomAdmin(request);
@@ -57,10 +69,19 @@ export async function PATCH(request: Request) {
     }
 
     try {
-        await setRoomDrawEnabled(auth.roomId, parsed.data.drawEnabled);
+        const room = await patchRoomSettings(auth.roomId, {
+            drawEnabled: parsed.data.drawEnabled,
+            title: parsed.data.title,
+            organizationName: parsed.data.organizationName,
+            eventName: parsed.data.eventName,
+        });
         return NextResponse.json({
             ok: true,
-            drawEnabled: parsed.data.drawEnabled,
+            id: room.id,
+            title: room.title,
+            organizationName: room.organizationName,
+            eventName: room.eventName,
+            drawEnabled: room.drawEnabled,
         });
     } catch (error) {
         if (error instanceof DomainError) {

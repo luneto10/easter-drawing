@@ -110,14 +110,45 @@ export async function deleteUserById(id: string): Promise<boolean> {
             data: { recipientId: null },
         });
 
-        await tx.userOnRoom.deleteMany({
+        const memberships = await tx.userOnRoom.findMany({
             where: { userId: uid },
+            select: { roomId: true },
         });
 
-        await tx.room.updateMany({
-            where: { creatorId: uid },
-            data: { creatorId: null },
-        });
+        for (const m of memberships) {
+            const rid = m.roomId;
+            const room = await tx.room.findUnique({
+                where: { id: rid },
+                select: { creatorId: true },
+            });
+            if (!room) continue;
+
+            const count = await tx.userOnRoom.count({
+                where: { roomId: rid },
+            });
+
+            if (room.creatorId === uid) {
+                if (count === 1) {
+                    await tx.room.delete({ where: { id: rid } });
+                    continue;
+                }
+                const next = await tx.userOnRoom.findFirst({
+                    where: { roomId: rid, userId: { not: uid } },
+                    orderBy: { userId: "asc" },
+                    select: { userId: true },
+                });
+                if (next) {
+                    await tx.room.update({
+                        where: { id: rid },
+                        data: { creatorId: next.userId },
+                    });
+                }
+            }
+
+            await tx.userOnRoom.delete({
+                where: { userId_roomId: { userId: uid, roomId: rid } },
+            });
+        }
 
         await tx.user.delete({
             where: { id: uid },
@@ -147,15 +178,13 @@ export async function deleteAllMembersInRoom(roomId: string): Promise<void> {
         for (const userId of userIds) {
             const remaining = await tx.userOnRoom.count({ where: { userId } });
             if (remaining === 0) {
-                await tx.room.updateMany({
-                    where: { creatorId: userId },
-                    data: { creatorId: null },
-                });
                 await tx.user
                     .delete({ where: { id: userId } })
                     .catch(() => undefined);
             }
         }
+
+        await tx.room.delete({ where: { id: rid } });
     });
 }
 

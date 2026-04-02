@@ -26,8 +26,8 @@ model Room {
   eventName          String   @default("Easter") @map("event_name")
   adminKey           String   @unique @map("admin_key")
   drawEnabled        Boolean  @default(true) @map("draw_enabled")
-  creatorId    String?  @map("creator_id")
-  creator      User?    @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  creatorId    String   @map("creator_id")
+  creator      User     @relation("RoomCreator", fields: [creatorId], references: [id], onDelete: Restrict)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

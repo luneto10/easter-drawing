@@ -107,16 +107,37 @@ export async function removeMemberFromRoom(
             data: { recipientId: null },
         });
 
-        await tx.userOnRoom.delete({
-            where: { userId_roomId: { userId: uid, roomId: rid } },
+        const room = await tx.room.findUnique({
+            where: { id: rid },
+            select: { creatorId: true },
         });
+        const memberCount = await tx.userOnRoom.count({
+            where: { roomId: rid },
+        });
+
+        if (room && room.creatorId === uid && memberCount === 1) {
+            await tx.room.delete({ where: { id: rid } });
+        } else {
+            if (room && room.creatorId === uid && memberCount > 1) {
+                const next = await tx.userOnRoom.findFirst({
+                    where: { roomId: rid, userId: { not: uid } },
+                    orderBy: { userId: "asc" },
+                    select: { userId: true },
+                });
+                if (next) {
+                    await tx.room.update({
+                        where: { id: rid },
+                        data: { creatorId: next.userId },
+                    });
+                }
+            }
+            await tx.userOnRoom.delete({
+                where: { userId_roomId: { userId: uid, roomId: rid } },
+            });
+        }
 
         const remaining = await tx.userOnRoom.count({ where: { userId: uid } });
         if (remaining === 0) {
-            await tx.room.updateMany({
-                where: { creatorId: uid },
-                data: { creatorId: null },
-            });
             await tx.user
                 .delete({
                     where: { id: uid },
@@ -145,12 +166,18 @@ export async function listRoomMembers(roomId: string): Promise<RoomMemberListIte
     }));
 }
 
-export type UserRoomSummary = {
+export type RoomPublicMeta = {
     id: string;
     title: string;
     organizationName: string;
     eventName: string;
     drawEnabled: boolean;
+};
+
+export type UserRoomSummary = RoomPublicMeta & {
+    creatorId: string;
+    /** Only when the listed user is the room organizer (same as `creatorId`). */
+    adminKey: string | null;
 };
 
 export async function listRoomsForUser(userId: string): Promise<UserRoomSummary[]> {
@@ -170,10 +197,12 @@ export async function listRoomsForUser(userId: string): Promise<UserRoomSummary[
         organizationName: row.room.organizationName,
         eventName: row.room.eventName,
         drawEnabled: row.room.drawEnabled,
+        creatorId: row.room.creatorId,
+        adminKey: row.room.creatorId === uid ? row.room.adminKey : null,
     }));
 }
 
-export async function getRoomPublicMeta(roomId: string): Promise<UserRoomSummary | null> {
+export async function getRoomPublicMeta(roomId: string): Promise<RoomPublicMeta | null> {
     const rid = normalizeEntityId(roomId);
     const room = await prisma.room.findUnique({
         where: { id: rid },
@@ -203,4 +232,73 @@ export async function setRoomDrawEnabled(
         where: { id: rid },
         data: { drawEnabled },
     });
+}
+
+/**
+ * Partial update for room settings (organizer / admin key). At least one field required.
+ */
+export async function patchRoomSettings(
+    roomId: string,
+    patch: {
+        drawEnabled?: boolean;
+        title?: string;
+        organizationName?: string;
+        eventName?: string;
+    },
+): Promise<RoomPublicMeta> {
+    const rid = normalizeEntityId(roomId);
+    const room = await prisma.room.findUnique({ where: { id: rid } });
+    if (!room) {
+        throw new DomainError("Room not found");
+    }
+
+    const data: {
+        drawEnabled?: boolean;
+        title?: string;
+        organizationName?: string;
+        eventName?: string;
+    } = {};
+
+    if (patch.drawEnabled !== undefined) {
+        data.drawEnabled = patch.drawEnabled;
+    }
+    if (patch.title !== undefined) {
+        const t = patch.title.trim();
+        if (!t) {
+            throw new DomainError("Room title is required");
+        }
+        data.title = t;
+    }
+    if (patch.organizationName !== undefined) {
+        const o = patch.organizationName.trim();
+        if (!o) {
+            throw new DomainError("Organization name is required");
+        }
+        data.organizationName = o;
+    }
+    if (patch.eventName !== undefined) {
+        const e = patch.eventName.trim();
+        if (!e) {
+            throw new DomainError("Event name is required");
+        }
+        data.eventName = e;
+    }
+
+    if (Object.keys(data).length === 0) {
+        throw new DomainError("No changes to apply");
+    }
+
+    const updated = await prisma.room.update({
+        where: { id: rid },
+        data,
+        select: {
+            id: true,
+            title: true,
+            organizationName: true,
+            eventName: true,
+            drawEnabled: true,
+        },
+    });
+
+    return updated;
 }

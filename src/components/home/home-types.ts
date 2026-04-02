@@ -13,4 +13,7 @@ export type UserRoomListItem = {
     organizationName: string;
     eventName: string;
     drawEnabled: boolean;
+    creatorId: string;
+    /** Secret admin key; only present when you created this room. */
+    adminKey: string | null;
 };

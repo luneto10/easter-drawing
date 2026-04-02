@@ -2,6 +2,10 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { AdminAddPersonForm } from "@/components/admin/admin-add-person-form";
+import { AdminRoomDetailsCard } from "@/components/admin/admin-room-details-card";
+import { AdminUnlockCard } from "@/components/admin/admin-unlock-card";
+import { AdminUserEditFields } from "@/components/admin/admin-user-edit-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -137,6 +141,18 @@ function AdminPageInner() {
         }
     }
 
+    function applyRoomPayload(payload: {
+        title?: unknown;
+        organizationName?: unknown;
+        eventName?: unknown;
+        drawEnabled?: unknown;
+    }) {
+        setRoomTitleDisplay(String(payload.title ?? ""));
+        setRoomOrganizationDisplay(String(payload.organizationName ?? ""));
+        setRoomEventDisplay(String(payload.eventName ?? ""));
+        setDrawEnabled(payload.drawEnabled === true);
+    }
+
     async function setDrawEnabledOnServer(next: boolean) {
         setLoading(true);
         setError("");
@@ -150,9 +166,35 @@ function AdminPageInner() {
                 setError(payload?.error ?? "Failed to update draw setting");
                 return;
             }
-            setDrawEnabled(next);
+            applyRoomPayload(payload);
         } catch {
             setError("Failed to update draw setting");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function saveRoomDetails(e: FormEvent) {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+        try {
+            const response = await request("/api/admin/room", {
+                method: "PATCH",
+                body: JSON.stringify({
+                    title: roomTitleDisplay,
+                    organizationName: roomOrganizationDisplay,
+                    eventName: roomEventDisplay,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setError(payload?.error ?? "Failed to save room details");
+                return;
+            }
+            applyRoomPayload(payload);
+        } catch {
+            setError("Failed to save room details");
         } finally {
             setLoading(false);
         }
@@ -387,42 +429,14 @@ function AdminPageInner() {
 
     if (!isUnlocked) {
         return (
-            <main className="min-h-dvh w-full bg-zinc-50 text-zinc-900">
-                <div className="mx-auto flex min-h-dvh w-full max-w-md items-center justify-center px-6">
-                    <Card className="w-full">
-                        <CardHeader>
-                            <CardTitle>Admin</CardTitle>
-                            <CardDescription>
-                                Enter the admin code from your room link. Room ID
-                                can be filled automatically from the link.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={unlock} className="space-y-4">
-                                <Input
-                                    value={roomId}
-                                    onChange={(e) => setRoomId(e.target.value)}
-                                    placeholder="Room ID"
-                                    autoComplete="off"
-                                />
-                                <Input
-                                    value={code}
-                                    onChange={(e) => setCode(e.target.value)}
-                                    placeholder="Admin code (from link)"
-                                    type="password"
-                                    autoComplete="off"
-                                />
-                                <Button className="w-full" type="submit">
-                                    Enter
-                                </Button>
-                                {error ? (
-                                    <p className="text-sm text-red-500">{error}</p>
-                                ) : null}
-                            </form>
-                        </CardContent>
-                    </Card>
-                </div>
-            </main>
+            <AdminUnlockCard
+                roomId={roomId}
+                adminCode={code}
+                onRoomIdChange={setRoomId}
+                onAdminCodeChange={setCode}
+                onSubmit={unlock}
+                error={error}
+            />
         );
     }
 
@@ -480,19 +494,18 @@ function AdminPageInner() {
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <p className="text-xs font-mono text-zinc-500">Room: {roomId}</p>
-                    {roomTitleDisplay ? (
-                        <p className="text-sm text-zinc-700">{roomTitleDisplay}</p>
-                    ) : null}
-                    {roomOrganizationDisplay || roomEventDisplay ? (
-                        <p className="text-sm text-zinc-600">
-                            {roomOrganizationDisplay}
-                            {roomOrganizationDisplay && roomEventDisplay ? " · " : null}
-                            {roomEventDisplay}
-                        </p>
-                    ) : null}
-                </div>
+                <p className="text-xs font-mono text-zinc-500">Room: {roomId}</p>
+
+                <AdminRoomDetailsCard
+                    title={roomTitleDisplay}
+                    organizationName={roomOrganizationDisplay}
+                    eventName={roomEventDisplay}
+                    onTitleChange={setRoomTitleDisplay}
+                    onOrganizationChange={setRoomOrganizationDisplay}
+                    onEventChange={setRoomEventDisplay}
+                    onSubmit={saveRoomDetails}
+                    loading={loading}
+                />
 
                 <Card className="border-zinc-200">
                     <CardHeader className="pb-2">
@@ -592,24 +605,14 @@ function AdminPageInner() {
                     </CardContent>
                 </Card>
 
-                <form
+                <AdminAddPersonForm
+                    name={addName}
+                    email={addEmail}
+                    onNameChange={setAddName}
+                    onEmailChange={setAddEmail}
                     onSubmit={addPerson}
-                    className="flex flex-col gap-2 sm:flex-row"
-                >
-                    <Input
-                        value={addName}
-                        onChange={(e) => setAddName(e.target.value)}
-                        placeholder="Add person name"
-                    />
-                    <Input
-                        value={addEmail}
-                        onChange={(e) => setAddEmail(e.target.value)}
-                        placeholder="Email (name@email.com)"
-                    />
-                    <Button type="submit" disabled={loading}>
-                        Add person
-                    </Button>
-                </form>
+                    loading={loading}
+                />
 
                 {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
@@ -638,25 +641,16 @@ function AdminPageInner() {
                                             <TableRow key={user.id}>
                                                 <TableCell>
                                                     {isEditing ? (
-                                                        <div className="space-y-2">
-                                                            <Input
-                                                                value={editingName}
-                                                                onChange={(e) =>
-                                                                    setEditingName(
-                                                                        e.target.value,
-                                                                    )
-                                                                }
-                                                            />
-                                                            <Input
-                                                                value={editingEmail}
-                                                                onChange={(e) =>
-                                                                    setEditingEmail(
-                                                                        e.target.value,
-                                                                    )
-                                                                }
-                                                                placeholder="Email (name@email.com)"
-                                                            />
-                                                        </div>
+                                                        <AdminUserEditFields
+                                                            name={editingName}
+                                                            email={editingEmail}
+                                                            onNameChange={
+                                                                setEditingName
+                                                            }
+                                                            onEmailChange={
+                                                                setEditingEmail
+                                                            }
+                                                        />
                                                     ) : (
                                                         user.name
                                                     )}

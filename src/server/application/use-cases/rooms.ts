@@ -89,7 +89,7 @@ export async function joinRoom(userId: string, roomId: string) {
     return room;
 }
 
-/** Removes membership in this room; deletes the user if they have no other rooms. */
+/** Removes membership in this room only; the user row is kept so they can join other rooms or re-join later. */
 export async function removeMemberFromRoom(
     roomId: string,
     userId: string,
@@ -145,21 +145,14 @@ export async function removeMemberFromRoom(
                 where: { userId_roomId: { userId: uid, roomId: rid } },
             });
         }
-
-        const remaining = await tx.userOnRoom.count({ where: { userId: uid } });
-        if (remaining === 0) {
-            await tx.user
-                .delete({
-                    where: { id: uid },
-                })
-                .catch(() => undefined);
-        }
     });
 
     return true;
 }
 
-export async function listRoomMembers(roomId: string): Promise<RoomMemberListItem[]> {
+export async function listRoomMembers(
+    roomId: string,
+): Promise<RoomMemberListItem[]> {
     const rid = normalizeEntityId(roomId);
     const rows = await prisma.userOnRoom.findMany({
         where: { roomId: rid },
@@ -180,34 +173,18 @@ export async function listRoomMembers(roomId: string): Promise<RoomMemberListIte
     }));
 }
 
-/** Permanently delete the room and all memberships; organizer user row is kept. */
+/** Permanently delete the room and all memberships (cascade). User rows are not deleted. */
 export async function deleteRoom(roomId: string): Promise<void> {
     const rid = normalizeEntityId(roomId);
     const room = await prisma.room.findUnique({
         where: { id: rid },
-        select: { id: true, creatorId: true },
+        select: { id: true },
     });
     if (!room) {
         throw new DomainError("Room not found");
     }
 
-    const memberRows = await prisma.userOnRoom.findMany({
-        where: { roomId: rid },
-        select: { userId: true },
-    });
-    const userIds = [...new Set(memberRows.map((m) => m.userId))];
-
     await prisma.room.delete({ where: { id: rid } });
-
-    for (const userId of userIds) {
-        if (userId === room.creatorId) continue;
-        const remaining = await prisma.userOnRoom.count({ where: { userId } });
-        if (remaining === 0) {
-            await prisma.user
-                .delete({ where: { id: userId } })
-                .catch(() => undefined);
-        }
-    }
 }
 
 export type RoomPublicMeta = {
@@ -224,7 +201,9 @@ export type UserRoomSummary = RoomPublicMeta & {
     adminKey: string | null;
 };
 
-export async function listRoomsForUser(userId: string): Promise<UserRoomSummary[]> {
+export async function listRoomsForUser(
+    userId: string,
+): Promise<UserRoomSummary[]> {
     const uid = normalizeEntityId(userId);
     const rows = await prisma.userOnRoom.findMany({
         where: { userId: uid },
@@ -246,7 +225,9 @@ export async function listRoomsForUser(userId: string): Promise<UserRoomSummary[
     }));
 }
 
-export async function getRoomPublicMeta(roomId: string): Promise<RoomPublicMeta | null> {
+export async function getRoomPublicMeta(
+    roomId: string,
+): Promise<RoomPublicMeta | null> {
     const rid = normalizeEntityId(roomId);
     const room = await prisma.room.findUnique({
         where: { id: rid },

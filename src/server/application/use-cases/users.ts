@@ -34,71 +34,6 @@ export async function createUser(
     return userRowToDomain(row);
 }
 
-export async function createUserInRoom(
-    roomId: string,
-    name: string,
-    email?: string | null,
-): Promise<User> {
-    const rid = normalizeEntityId(roomId);
-    const room = await prisma.room.findUnique({ where: { id: rid } });
-    if (!room) {
-        throw new DomainError("Room not found");
-    }
-
-    const user = await createUser(name, email);
-    await prisma.userOnRoom.create({
-        data: { userId: user.id, roomId: rid },
-    });
-    return user;
-}
-
-export async function updateUserName(
-    id: string,
-    name: string,
-): Promise<User | null> {
-    const normalizedName = name.trim();
-    if (!normalizedName) {
-        throw new DomainError("Name is required");
-    }
-
-    const uid = normalizeEntityId(id);
-    const existing = await prisma.user.findUnique({ where: { id: uid } });
-    if (!existing) return null;
-
-    const row = await prisma.user.update({
-        where: { id: uid },
-        data: { name: normalizedName },
-    });
-
-    return userRowToDomain(row);
-}
-
-export async function updateUserProfile(
-    id: string,
-    name: string,
-    email?: string | null,
-): Promise<User | null> {
-    const normalizedName = name.trim();
-    if (!normalizedName) {
-        throw new DomainError("Name is required");
-    }
-
-    const validated = User.register(normalizedName, email);
-    const uid = normalizeEntityId(id);
-    const existing = await prisma.user.findUnique({ where: { id: uid } });
-    if (!existing) return null;
-
-    const row = await prisma.user.update({
-        where: { id: uid },
-        data: {
-            name: validated.name,
-            email: validated.email,
-        },
-    });
-
-    return userRowToDomain(row);
-}
-
 export async function deleteUserById(id: string): Promise<boolean> {
     const uid = normalizeEntityId(id);
     const existing = await prisma.user.findUnique({ where: { id: uid } });
@@ -158,7 +93,7 @@ export async function deleteUserById(id: string): Promise<boolean> {
     return true;
 }
 
-/** Remove every member except the room organizer. Deletes user accounts that end up with no room memberships. */
+/** Remove every member except the room organizer. User rows are kept (only room links are removed). */
 export async function removeAllMembersExceptCreator(roomId: string): Promise<void> {
     const rid = normalizeEntityId(roomId);
     const room = await prisma.room.findUnique({
@@ -210,15 +145,6 @@ export async function removeAllMembersExceptCreator(roomId: string): Promise<voi
                     },
                     data: { recipientId: null },
                 });
-            }
-        }
-
-        for (const userId of toRemove) {
-            const remaining = await tx.userOnRoom.count({ where: { userId } });
-            if (remaining === 0) {
-                await tx.user
-                    .delete({ where: { id: userId } })
-                    .catch(() => undefined);
             }
         }
     });

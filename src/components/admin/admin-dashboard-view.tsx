@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminAddPersonForm } from "@/components/admin/admin-add-person-form";
 import { AdminExchangeCard } from "@/components/admin/admin-exchange-card";
 import { AdminHeaderToolbar } from "@/components/admin/admin-header-toolbar";
 import { AdminJoinLinkCard } from "@/components/admin/admin-join-link-card";
@@ -56,15 +55,6 @@ export function AdminDashboardView({ dashboard: d }: Props) {
                     onCloseDraw={() => void d.setDrawEnabledOnServer(false)}
                 />
 
-                <AdminAddPersonForm
-                    name={d.addName}
-                    email={d.addEmail}
-                    onNameChange={d.setAddName}
-                    onEmailChange={d.setAddEmail}
-                    onSubmit={d.addPerson}
-                    loading={d.loading}
-                />
-
                 {d.error ? (
                     <p className="text-sm text-red-500">{d.error}</p>
                 ) : null}
@@ -72,14 +62,6 @@ export function AdminDashboardView({ dashboard: d }: Props) {
                 <AdminParticipantsTable
                     users={d.users}
                     loading={d.loading}
-                    editingId={d.editingId}
-                    editingName={d.editingName}
-                    editingEmail={d.editingEmail}
-                    onEditingNameChange={d.setEditingName}
-                    onEditingEmailChange={d.setEditingEmail}
-                    onStartEdit={d.startEdit}
-                    onCancelEdit={d.cancelEdit}
-                    onSaveEdit={(id) => void d.saveName(id)}
                     onSendEmail={(id) => void d.sendEmailForUser(id)}
                     onDelete={(id) => void d.deletePerson(id)}
                 />

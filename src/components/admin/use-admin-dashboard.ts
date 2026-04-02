@@ -22,11 +22,6 @@ export function useAdminDashboard() {
     const [users, setUsers] = useState<AdminUserRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [addName, setAddName] = useState("");
-    const [addEmail, setAddEmail] = useState("");
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editingName, setEditingName] = useState("");
-    const [editingEmail, setEditingEmail] = useState("");
     const [roomTitleDisplay, setRoomTitleDisplay] = useState("");
     const [roomOrganizationDisplay, setRoomOrganizationDisplay] = useState("");
     const [roomEventDisplay, setRoomEventDisplay] = useState("");
@@ -259,70 +254,6 @@ export function useAdminDashboard() {
         [adminAuthHeaders, request, applyRoomPayload, roomId, code],
     );
 
-    const addPerson = useCallback(
-        async (e: FormEvent) => {
-            e.preventDefault();
-            if (!addName.trim()) return;
-
-            setLoading(true);
-            setError("");
-            try {
-                const response = await request("/api/admin/users", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: addName,
-                        email: addEmail || undefined,
-                    }),
-                });
-                const payload = await response.json();
-                if (!response.ok) {
-                    setError(payload?.error ?? "Failed to add person");
-                    return;
-                }
-                setAddName("");
-                setAddEmail("");
-                await loadUsers();
-            } catch {
-                setError("Failed to add person");
-            } finally {
-                setLoading(false);
-            }
-        },
-        [request, addName, addEmail, loadUsers],
-    );
-
-    const saveName = useCallback(
-        async (id: string) => {
-            if (!editingName.trim()) return;
-
-            setLoading(true);
-            setError("");
-            try {
-                const response = await request(`/api/admin/users/${id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify({
-                        name: editingName,
-                        email: editingEmail,
-                    }),
-                });
-                const payload = await response.json();
-                if (!response.ok) {
-                    setError(payload?.error ?? "Failed to update name");
-                    return;
-                }
-                setEditingId(null);
-                setEditingName("");
-                setEditingEmail("");
-                await loadUsers();
-            } catch {
-                setError("Failed to update name");
-            } finally {
-                setLoading(false);
-            }
-        },
-        [request, editingName, editingEmail, loadUsers],
-    );
-
     const deletePerson = useCallback(
         async (id: string) => {
             setLoading(true);
@@ -411,7 +342,7 @@ export function useAdminDashboard() {
     const removeAllParticipants = useCallback(async () => {
         if (
             !window.confirm(
-                "Remove all participants from this room except you (the organizer)? Accounts that are only in this room will be deleted from the server.",
+                "Remove all participants from this room except you (the organizer)? Their accounts stay; they only lose access to this room.",
             )
         )
             return;
@@ -462,18 +393,6 @@ export function useAdminDashboard() {
         }
     }, [request, router]);
 
-    const cancelEdit = useCallback(() => {
-        setEditingId(null);
-        setEditingName("");
-        setEditingEmail("");
-    }, []);
-
-    const startEdit = useCallback((user: AdminUserRow) => {
-        setEditingId(user.id);
-        setEditingName(user.name);
-        setEditingEmail(user.email ?? "");
-    }, []);
-
     const copyJoinLink = useCallback(() => {
         if (!joinRoomUrl) return;
         void navigator.clipboard.writeText(joinRoomUrl);
@@ -508,20 +427,9 @@ export function useAdminDashboard() {
             error,
             hasUsers,
             hasRemovableMembers,
-            addName,
-            addEmail,
-            setAddName,
-            setAddEmail,
-            editingId,
-            editingName,
-            editingEmail,
-            setEditingName,
-            setEditingEmail,
             refreshUsersAndRoom,
             saveRoomDetails,
             setDrawEnabledOnServer,
-            addPerson,
-            saveName,
             deletePerson,
             runDrawAgain,
             sendEmailForUser,
@@ -529,8 +437,6 @@ export function useAdminDashboard() {
             removeAllParticipants,
             deleteRoomPermanently,
             copyJoinLink,
-            cancelEdit,
-            startEdit,
         },
     };
 }

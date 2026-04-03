@@ -29,7 +29,7 @@ WHERE
 
 -- Membership draw recipient (recipient_id)
 UPDATE "UserOnRoom" AS ur
-SET "recipient_id" = .uid
+SET "recipient_id" = u.id
 FROM "User" AS u
 WHERE
     ur."recipient_id" IS NOT NULL

@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type MouseEvent,
+} from "react";
 import { motion } from "motion/react";
 import {
+    Gift,
     LayoutDashboard,
     LogIn,
     LogOut,
@@ -11,8 +19,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ParticipantAvatar } from "@/components/ui/participant-avatar";
 import { HomeDesiredItemsPanel } from "@/components/home/home-desired-items-panel";
+import { HomeWishListDescription } from "@/components/home/wish-list-description";
 import { HomeRoomCard } from "@/components/home/home-room-card";
 import { screenVariants } from "@/components/home/home-motion";
 import { cn } from "@/lib/utils";
@@ -35,6 +52,7 @@ type Props = {
     onOpenCreateRoom: () => void;
     onOpenJoinRoom: () => void;
     onSelectMyRoom: (room: UserRoomListItem) => void;
+    onClearRoomSelection: () => void;
     onRevealMyRoom: (room: UserRoomListItem) => void;
     wishlistReportBusyRoomId: string | null;
     onDownloadWishlistReport: (room: UserRoomListItem) => void;
@@ -58,12 +76,45 @@ export function HomeIntroSection({
     onOpenCreateRoom,
     onOpenJoinRoom,
     onSelectMyRoom,
+    onClearRoomSelection,
     onRevealMyRoom,
     wishlistReportBusyRoomId,
     onDownloadWishlistReport,
     onOpenRecoverId,
 }: Props) {
     const [participantIdCopied, setParticipantIdCopied] = useState(false);
+    const [wishlistOpen, setWishlistOpen] = useState(false);
+    /** Ignore intro background deselect right after closing wish list (overlay click-through). */
+    const suppressClearRoomAfterWishlistCloseRef = useRef(false);
+    const suppressClearRoomTimeoutRef = useRef<ReturnType<
+        typeof setTimeout
+    > | null>(null);
+
+    useEffect(() => {
+        setWishlistOpen(false);
+    }, [roomIdSummary]);
+
+    useEffect(() => {
+        return () => {
+            if (suppressClearRoomTimeoutRef.current) {
+                clearTimeout(suppressClearRoomTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const handleWishlistOpenChange = useCallback((open: boolean) => {
+        if (!open) {
+            suppressClearRoomAfterWishlistCloseRef.current = true;
+            if (suppressClearRoomTimeoutRef.current) {
+                clearTimeout(suppressClearRoomTimeoutRef.current);
+            }
+            suppressClearRoomTimeoutRef.current = setTimeout(() => {
+                suppressClearRoomAfterWishlistCloseRef.current = false;
+                suppressClearRoomTimeoutRef.current = null;
+            }, 400);
+        }
+        setWishlistOpen(open);
+    }, []);
 
     const roomLine = roomIdSummary
         ? roomTitle
@@ -90,9 +141,9 @@ export function HomeIntroSection({
 
     const showWishlistPanel = Boolean(
         savedUserId &&
-            roomIdSummary &&
-            selectedRoomFromList &&
-            savedUserId.trim(),
+        roomIdSummary &&
+        selectedRoomFromList &&
+        savedUserId.trim(),
     );
 
     const organizerAdminHref =
@@ -114,6 +165,24 @@ export function HomeIntroSection({
         roomIdSummary && focusOrganizationName && focusEventName,
     );
 
+    const handleIntroBackgroundClick = useCallback(
+        (e: MouseEvent<HTMLElement>) => {
+            if (wishlistOpen || suppressClearRoomAfterWishlistCloseRef.current) {
+                return;
+            }
+            const el = e.target as HTMLElement;
+            if (el.closest("[data-home-room-card]")) return;
+            if (el.closest("button")) return;
+            if (el.closest("a")) return;
+            if (el.closest('[role="dialog"]')) return;
+            if (el.closest('[data-slot="dialog-overlay"]')) return;
+            if (el.closest("input, textarea, select, label")) return;
+            if (!roomIdSummary) return;
+            onClearRoomSelection();
+        },
+        [wishlistOpen, roomIdSummary, onClearRoomSelection],
+    );
+
     return (
         <motion.section
             key="intro"
@@ -121,6 +190,8 @@ export function HomeIntroSection({
             initial="initial"
             animate="animate"
             exit="exit"
+            role="presentation"
+            onClick={handleIntroBackgroundClick}
             className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-y-auto text-center"
         >
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-3">
@@ -141,8 +212,7 @@ export function HomeIntroSection({
                                     );
                                     setParticipantIdCopied(true);
                                     window.setTimeout(
-                                        () =>
-                                            setParticipantIdCopied(false),
+                                        () => setParticipantIdCopied(false),
                                         2000,
                                     );
                                 }}
@@ -280,10 +350,64 @@ export function HomeIntroSection({
                                 <LogOut className="mr-2 h-4 w-4" />
                                 Log out
                             </Button>
+                            {showWishlistPanel && roomIdSummary ? (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="rounded-xl"
+                                    onClick={() => handleWishlistOpenChange(true)}
+                                >
+                                    <Gift className="mr-2 h-4 w-4 text-amber-400" />
+                                    Wish list
+                                </Button>
+                            ) : null}
                         </>
                     ) : null}
                 </div>
             </div>
+
+            {showWishlistPanel && roomIdSummary ? (
+                <Dialog
+                    open={wishlistOpen}
+                    onOpenChange={handleWishlistOpenChange}
+                >
+                    <DialogContent
+                        showCloseButton
+                        onCloseAutoFocus={(ev) => ev.preventDefault()}
+                        className="max-h-[min(90vh,640px)] max-w-[calc(100%-2rem)] gap-4 border-zinc-800 bg-zinc-950 text-zinc-100 sm:max-w-lg dark:border-zinc-800"
+                    >
+                        <DialogHeader className="text-left">
+                            <DialogTitle className="flex items-center gap-2 text-zinc-50">
+                                <Gift
+                                    className="h-5 w-5 shrink-0 text-amber-400"
+                                    aria-hidden
+                                />
+                                Your wish list
+                            </DialogTitle>
+                            <DialogDescription className="text-zinc-400" asChild>
+                                <HomeWishListDescription
+                                    roomLabel={
+                                        roomTitle ??
+                                        `${roomIdSummary.slice(0, 8)}…`
+                                    }
+                                />
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="max-h-[min(50vh,380px)] pr-4">
+                            <HomeDesiredItemsPanel
+                                key={`${savedUserId.trim()}-${roomIdSummary}`}
+                                variant="plain"
+                                userId={savedUserId.trim()}
+                                roomId={roomIdSummary}
+                                roomLabel={
+                                    roomTitle ??
+                                    `${roomIdSummary.slice(0, 8)}…`
+                                }
+                            />
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+            ) : null}
 
             {savedUserId && (myRoomsLoading || myRooms.length > 0) ? (
                 <div className="mx-auto mt-8 w-full max-w-lg space-y-3 px-3 text-left">
@@ -311,12 +435,9 @@ export function HomeIntroSection({
                                     onSelect={() => onSelectMyRoom(room)}
                                     onReveal={() => onRevealMyRoom(room)}
                                     onDownloadWishlistReport={
-                                        room.isOrganizer &&
-                                        room.adminKey
+                                        room.isOrganizer && room.adminKey
                                             ? () =>
-                                                  onDownloadWishlistReport(
-                                                      room,
-                                                  )
+                                                  onDownloadWishlistReport(room)
                                             : undefined
                                     }
                                     wishlistReportLoading={
@@ -326,18 +447,6 @@ export function HomeIntroSection({
                             </li>
                         ))}
                     </ul>
-                    {showWishlistPanel && roomIdSummary ? (
-                        <div className="pt-2">
-                            <HomeDesiredItemsPanel
-                                userId={savedUserId.trim()}
-                                roomId={roomIdSummary}
-                                roomLabel={
-                                    roomTitle ??
-                                    `${roomIdSummary.slice(0, 8)}…`
-                                }
-                            />
-                        </div>
-                    ) : null}
                 </div>
             ) : null}
 

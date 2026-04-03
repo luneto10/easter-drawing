@@ -116,6 +116,7 @@ export function HomeContent() {
                                 m.setModal("joinRoom");
                             }}
                             onSelectMyRoom={m.handleSelectMyRoom}
+                            onClearRoomSelection={m.clearRoomSelection}
                             onRevealMyRoom={m.handleRevealMyRoom}
                             wishlistReportBusyRoomId={m.wishlistReportBusyRoomId}
                             onDownloadWishlistReport={

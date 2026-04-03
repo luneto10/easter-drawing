@@ -409,6 +409,24 @@ export function useHomeContentModel() {
         setError("");
     }
 
+    /** Clear focused room (client state + `room` query param). */
+    function clearRoomSelection() {
+        if (!(roomInput.trim() || queryRoomId.trim() || activeRoomId.trim())) {
+            return;
+        }
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("room");
+        const qs = params.toString();
+        startTransition(() => {
+            router.replace(qs ? `${pathname}?${qs}` : pathname);
+        });
+        setRoomInput("");
+        setActiveRoomId("");
+        setRoomTitle(null);
+        setError("");
+    }
+
     async function handleDownloadWishlistReport(room: UserRoomListItem) {
         if (!room.adminKey) return;
         setWishlistReportBusyRoomId(room.id);
@@ -641,6 +659,7 @@ export function useHomeContentModel() {
         goHome,
         logout,
         handleSelectMyRoom,
+        clearRoomSelection,
         handleRevealMyRoom,
         handleDownloadWishlistReport,
         submitRecoverIdModal,

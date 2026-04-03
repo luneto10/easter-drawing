@@ -34,7 +34,9 @@ export function HomeRoomCard({
 }: Props) {
     return (
         <Card
+            data-home-room-card
             size="sm"
+            onClick={(e) => e.stopPropagation()}
             className={cn(
                 "relative gap-0 border py-0 shadow-md ring-1 transition-colors dark:shadow-none",
                 selected

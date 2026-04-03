@@ -11,10 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {
-    DESIRED_ITEM_MAX_LENGTH,
-    DESIRED_ITEMS_MAX_COUNT,
-} from "@/lib/desired-items-limits";
+import { HomeWishListDescription } from "@/components/home/wish-list-description";
 import { AppApiClient } from "@/lib/api/app-api-client";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +19,16 @@ type Props = {
     userId: string;
     roomId: string;
     roomLabel: string;
+    /** When `plain`, only the form is rendered (for use inside a Dialog). */
+    variant?: "card" | "plain";
 };
 
-export function HomeDesiredItemsPanel({ userId, roomId, roomLabel }: Props) {
+export function HomeDesiredItemsPanel({
+    userId,
+    roomId,
+    roomLabel,
+    variant = "card",
+}: Props) {
     const [draft, setDraft] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -83,6 +87,57 @@ export function HomeDesiredItemsPanel({ userId, roomId, roomLabel }: Props) {
         }
     }
 
+    const form = (
+        <form onSubmit={onSubmit} className="space-y-3 text-left">
+            <textarea
+                name="wishlist"
+                value={draft}
+                onChange={(ev) => setDraft(ev.target.value)}
+                disabled={loading || saving}
+                rows={variant === "plain" ? 8 : 6}
+                className={cn(
+                    "min-h-30 w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 shadow-sm",
+                    "placeholder:text-zinc-600 focus-visible:border-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:outline-none",
+                    "disabled:cursor-not-allowed disabled:opacity-60",
+                )}
+                placeholder="One gift idea per line"
+                aria-label="Wish list items, one per line"
+            />
+            {error ? (
+                <p className="text-xs text-red-400">{error}</p>
+            ) : null}
+            {savedHint ? (
+                <p className="text-xs text-emerald-400" role="status">
+                    Saved.
+                </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    type="submit"
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={loading || saving}
+                >
+                    {saving ? "Saving…" : "Save wish list"}
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-lg border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"
+                    disabled={loading || saving}
+                    onClick={() => void load()}
+                >
+                    Reload
+                </Button>
+            </div>
+        </form>
+    );
+
+    if (variant === "plain") {
+        return <div className="space-y-3">{form}</div>;
+    }
+
     return (
         <Card
             size="sm"
@@ -94,58 +149,10 @@ export function HomeDesiredItemsPanel({ userId, roomId, roomLabel }: Props) {
                     Your wish list
                 </CardTitle>
                 <CardDescription className="text-xs text-zinc-500">
-                    For <span className="text-zinc-400">{roomLabel}</span>. One
-                    idea per line — up to {DESIRED_ITEMS_MAX_COUNT} items,{" "}
-                    {DESIRED_ITEM_MAX_LENGTH} characters each. Only visible to
-                    you and the room organizer (CSV report).
+                    <HomeWishListDescription roomLabel={roomLabel} />
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-                <form onSubmit={onSubmit} className="space-y-3">
-                    <textarea
-                        name="wishlist"
-                        value={draft}
-                        onChange={(ev) => setDraft(ev.target.value)}
-                        disabled={loading || saving}
-                        rows={6}
-                        className={cn(
-                            "min-h-30 w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 shadow-sm",
-                            "placeholder:text-zinc-600 focus-visible:border-zinc-600 focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:outline-none",
-                            "disabled:cursor-not-allowed disabled:opacity-60",
-                        )}
-                        placeholder="One gift idea per line"
-                        aria-label="Wish list items, one per line"
-                    />
-                    {error ? (
-                        <p className="text-xs text-red-400">{error}</p>
-                    ) : null}
-                    {savedHint ? (
-                        <p className="text-xs text-emerald-400" role="status">
-                            Saved.
-                        </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            type="submit"
-                            size="sm"
-                            className="rounded-lg"
-                            disabled={loading || saving}
-                        >
-                            {saving ? "Saving…" : "Save wish list"}
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="rounded-lg border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800"
-                            disabled={loading || saving}
-                            onClick={() => void load()}
-                        >
-                            Reload
-                        </Button>
-                    </div>
-                </form>
-            </CardContent>
+            <CardContent className="space-y-3 pt-0">{form}</CardContent>
         </Card>
     );
 }

@@ -20,7 +20,10 @@ export async function POST(request: Request, context: RouteContext) {
     try {
         const giver = await getUserById(id);
         if (!giver) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
+            return NextResponse.json(
+                { error: "User not found" },
+                { status: 404 },
+            );
         }
 
         if (!giver.email) {
@@ -33,7 +36,8 @@ export async function POST(request: Request, context: RouteContext) {
         const assignment = await getRecipientForGiverInRoom(id, auth.roomId);
         const { subject, html } = buildDrawEmailTemplate({
             giverName: assignment?.giver.name ?? giver.name,
-            giverId: assignment?.giver.id ?? giver.id,
+            giverId:
+                assignment?.giver.participantId ?? giver.participantId,
             recipientName: assignment?.recipient?.name,
             roomId: auth.roomId,
             organizationName: auth.organizationName,
@@ -54,9 +58,7 @@ export async function POST(request: Request, context: RouteContext) {
     } catch (error) {
         console.error(error);
         const message =
-            error instanceof Error
-                ? error.message
-                : "Failed to send email";
+            error instanceof Error ? error.message : "Failed to send email";
         const isAuthError =
             message.toLowerCase().includes("invalid login") ||
             message.toLowerCase().includes("authentication");

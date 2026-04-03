@@ -1,9 +1,4 @@
-export type RoomMetaPayload = {
-    title?: unknown;
-    organizationName?: unknown;
-    eventName?: unknown;
-    drawEnabled?: unknown;
-};
+import type { RoomMetaPayload } from "@/types/admin";
 
 export function readRoomMetaFromPayload(payload: RoomMetaPayload): {
     title: string;

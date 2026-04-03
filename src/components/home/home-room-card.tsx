@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield } from "lucide-react";
+import { FileSpreadsheet, Shield } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
     CardDescription,
     CardTitle,
 } from "@/components/ui/card";
-import type { UserRoomListItem } from "@/components/home/home-types";
+import type { UserRoomListItem } from "@/types/home";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -19,6 +19,8 @@ type Props = {
     isOrganizer: boolean;
     onSelect: () => void;
     onReveal: () => void;
+    onDownloadWishlistReport?: () => void;
+    wishlistReportLoading?: boolean;
 };
 
 export function HomeRoomCard({
@@ -27,6 +29,8 @@ export function HomeRoomCard({
     isOrganizer,
     onSelect,
     onReveal,
+    onDownloadWishlistReport,
+    wishlistReportLoading,
 }: Props) {
     return (
         <Card
@@ -83,7 +87,27 @@ export function HomeRoomCard({
                             : "Draw closed — cannot join or reveal"}
                     </p>
                 </div>
-                <div className="relative z-3 flex shrink-0 items-center justify-end sm:justify-start sm:self-center pointer-events-auto">
+                <div className="relative z-3 flex shrink-0 flex-wrap items-center justify-end gap-2 sm:justify-start sm:self-center pointer-events-auto">
+                    {isOrganizer && onDownloadWishlistReport ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-lg border-zinc-600 bg-zinc-900/90 px-2.5 text-xs text-zinc-100"
+                            disabled={Boolean(wishlistReportLoading)}
+                            title="Download CSV of every participant’s wish list in this room"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDownloadWishlistReport();
+                            }}
+                        >
+                            <FileSpreadsheet
+                                className="mr-1.5 h-3.5 w-3.5"
+                                aria-hidden
+                            />
+                            {wishlistReportLoading ? "…" : "Report"}
+                        </Button>
+                    ) : null}
                     <Button
                         type="button"
                         size="sm"
@@ -94,7 +118,10 @@ export function HomeRoomCard({
                                 ? "See who you give to"
                                 : "Organizer closed this draw"
                         }
-                        onClick={onReveal}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onReveal();
+                        }}
                     >
                         Reveal
                     </Button>

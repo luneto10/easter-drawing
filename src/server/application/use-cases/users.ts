@@ -1,3 +1,4 @@
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { User } from "@/server/domain/entities/user";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { normalizeEntityId } from "@/server/shared/ids/normalize-entity-id";
@@ -6,6 +7,10 @@ import {
     userRowToDomain,
     userToCreateInput,
 } from "@/server/infrastructure/persistence/mappers/user-mapper";
+
+/** Shown when registering with an email that already has an account. */
+export const DUPLICATE_EMAIL_MESSAGE =
+    'Account already exists for this email. Use "Email me my ID" on the home page or log in with your participant ID.';
 
 export async function listUsers(): Promise<User[]> {
     const rows = await prisma.user.findMany({
@@ -23,15 +28,68 @@ export async function getUserById(id: string): Promise<User | null> {
     return userRowToDomain(row);
 }
 
+/** Look up a participant by their public login id (`participantId`). */
+export async function getUserByParticipantId(
+    participantId: string,
+): Promise<User | null> {
+    const pid = normalizeEntityId(participantId);
+    const row = await prisma.user.findFirst({
+        where: {
+            OR: [{ participantId: pid }, { legacyParticipantId: pid }],
+        },
+    });
+    if (!row) return null;
+    return userRowToDomain(row);
+}
+
+/** Looks up a participant by email (case-insensitive). */
+export async function getUserByEmail(email: string): Promise<User | null> {
+    const trimmed = email.trim();
+    if (!trimmed) return null;
+    const row = await prisma.user.findFirst({
+        where: {
+            email: { equals: trimmed, mode: "insensitive" },
+        },
+    });
+    if (!row) return null;
+    return userRowToDomain(row);
+}
+
 export async function createUser(
     name: string,
     email?: string | null,
 ): Promise<User> {
     const user = User.register(name, email);
-    const row = await prisma.user.create({
-        data: userToCreateInput(user),
-    });
-    return userRowToDomain(row);
+    if (user.email) {
+        const existing = await getUserByEmail(user.email);
+        if (existing) {
+            throw new DomainError(DUPLICATE_EMAIL_MESSAGE);
+        }
+    }
+    try {
+        const row = await prisma.user.create({
+            data: userToCreateInput(user),
+        });
+        return userRowToDomain(row);
+    } catch (error) {
+        if (
+            error instanceof PrismaClientKnownRequestError &&
+            error.code === "P2002"
+        ) {
+            const target = error.meta?.target;
+            const isEmailUnique =
+                Array.isArray(target) &&
+                target.some(
+                    (t) =>
+                        typeof t === "string" &&
+                        t.toLowerCase().includes("email"),
+                );
+            if (isEmailUnique || user.email) {
+                throw new DomainError(DUPLICATE_EMAIL_MESSAGE);
+            }
+        }
+        throw error;
+    }
 }
 
 export async function deleteUserById(id: string): Promise<boolean> {

@@ -8,7 +8,10 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
+  participantId String @unique @default(uuid()) @map("participantId")
+  legacyParticipantId String? @map("legacyParticipantId")
+
   name      String
   email     String?  @unique
   createdAt DateTime @default(now())
@@ -39,11 +42,27 @@ model UserOnRoom {
   roomId      String
   recipientId String? @map("recipient_id")
 
-  user      User  @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
-  room      Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  recipient User? @relation("RoomDrawRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  user         User          @relation("MembershipUser", fields: [userId], references: [id], onDelete: Cascade)
+  room         Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  recipient    User?         @relation("RoomDrawRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  desiredItems DesiredItem[]
 
   @@id([userId, roomId])
   @@unique([roomId, recipientId])
   @@index([roomId])
+}
+
+/** Wish-list line items for a participant in a specific room (for gift hints). */
+model DesiredItem {
+  id        String   @id @default(uuid())
+  userId    String
+  roomId    String
+  itemText  String   @map("item_text")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  membership UserOnRoom @relation(fields: [userId, roomId], references: [userId, roomId], onDelete: Cascade)
+
+  @@index([roomId])
+  @@map("DesiredItem")
 }

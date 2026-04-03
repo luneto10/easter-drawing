@@ -22,9 +22,13 @@ export function AdminDashboardView({ dashboard: d }: Props) {
                     loading={d.loading}
                     hasUsers={d.hasUsers}
                     hasRemovableMembers={d.hasRemovableMembers}
+                    wishlistReportBusy={d.wishlistReportBusy}
                     onRefresh={d.refreshUsersAndRoom}
                     onRunDraw={d.runDrawAgain}
                     onSendAllEmails={d.sendAllEmails}
+                    onDownloadWishlistReport={() =>
+                        void d.downloadWishlistReport()
+                    }
                     onRemoveAllParticipants={d.removeAllParticipants}
                     onDeleteRoom={d.deleteRoomPermanently}
                 />

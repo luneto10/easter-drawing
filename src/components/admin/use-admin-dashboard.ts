@@ -2,12 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { AdminUserRow } from "@/components/admin/admin-dashboard-types";
+import type { AdminUserRow, RoomMetaPayload } from "@/types/admin";
 import { buildParticipantJoinUrl } from "@/components/admin/admin-join-url";
-import {
-    readRoomMetaFromPayload,
-    type RoomMetaPayload,
-} from "@/components/admin/admin-room-payload";
+import { readRoomMetaFromPayload } from "@/components/admin/admin-room-payload";
 
 const AUTH_DENIED =
     "That room ID or admin code does not match our records. Use the full admin link from your email, or paste the room and code exactly.";
@@ -27,6 +24,7 @@ export function useAdminDashboard() {
     const [roomEventDisplay, setRoomEventDisplay] = useState("");
     const [drawEnabled, setDrawEnabled] = useState<boolean | null>(null);
     const [joinUrlCopied, setJoinUrlCopied] = useState(false);
+    const [wishlistReportBusy, setWishlistReportBusy] = useState(false);
 
     const hasUsers = useMemo(() => users.length > 0, [users.length]);
     const hasRemovableMembers = useMemo(
@@ -400,6 +398,42 @@ export function useAdminDashboard() {
         window.setTimeout(() => setJoinUrlCopied(false), 2000);
     }, [joinRoomUrl]);
 
+    const downloadWishlistReport = useCallback(async () => {
+        setWishlistReportBusy(true);
+        setError("");
+        try {
+            const response = await request(
+                "/api/admin/room/desired-items-report",
+            );
+            if (!response.ok) {
+                const payload = (await response.json().catch(() => ({}))) as {
+                    error?: string;
+                };
+                setError(
+                    payload?.error ?? "Failed to download wish list report",
+                );
+                return;
+            }
+            const blob = await response.blob();
+            const cd = response.headers.get("Content-Disposition");
+            let filename = "wishlist-report.csv";
+            const m = cd?.match(/filename="([^"]+)"/);
+            if (m?.[1]) filename = m[1];
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch {
+            setError("Failed to download wish list report");
+        } finally {
+            setWishlistReportBusy(false);
+        }
+    }, [request]);
+
     return {
         isUnlocked,
         unlock: {
@@ -437,6 +471,8 @@ export function useAdminDashboard() {
             removeAllParticipants,
             deleteRoomPermanently,
             copyJoinLink,
+            downloadWishlistReport,
+            wishlistReportBusy,
         },
     };
 }

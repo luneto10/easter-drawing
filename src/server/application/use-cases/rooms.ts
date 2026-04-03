@@ -3,6 +3,8 @@ import prisma from "../../../../lib/prisma";
 import type { RoomMemberListItem } from "@/server/application/dto/user-list-item";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { normalizeEntityId } from "@/server/shared/ids/normalize-entity-id";
+import { getUserByParticipantId } from "@/server/application/use-cases/users";
+import type { RoomPublicMeta, UserRoomSummary } from "@/types/room";
 
 function generateAdminKey(): string {
     return randomBytes(32).toString("hex");
@@ -167,7 +169,7 @@ export async function listRoomMembers(
         id: row.user.id,
         name: row.user.name,
         email: row.user.email,
-        recipientId: row.recipientId,
+        hasRecipientAssigned: row.recipientId != null,
         createdAt: row.user.createdAt.toISOString(),
         isOrganizer: row.room.creatorId === row.userId,
     }));
@@ -187,24 +189,13 @@ export async function deleteRoom(roomId: string): Promise<void> {
     await prisma.room.delete({ where: { id: rid } });
 }
 
-export type RoomPublicMeta = {
-    id: string;
-    title: string;
-    organizationName: string;
-    eventName: string;
-    drawEnabled: boolean;
-};
-
-export type UserRoomSummary = RoomPublicMeta & {
-    creatorId: string;
-    /** Only when the listed user is the room organizer (same as `creatorId`). */
-    adminKey: string | null;
-};
-
 export async function listRoomsForUser(
     userId: string,
 ): Promise<UserRoomSummary[]> {
-    const uid = normalizeEntityId(userId);
+    const participantId = normalizeEntityId(userId);
+    const user = await getUserByParticipantId(participantId);
+    if (!user) return [];
+    const uid = user.id;
     const rows = await prisma.userOnRoom.findMany({
         where: { userId: uid },
         include: { room: true },
@@ -221,6 +212,7 @@ export async function listRoomsForUser(
         eventName: row.room.eventName,
         drawEnabled: row.room.drawEnabled,
         creatorId: row.room.creatorId,
+        isOrganizer: row.room.creatorId === uid,
         adminKey: row.room.creatorId === uid ? row.room.adminKey : null,
     }));
 }

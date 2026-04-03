@@ -1,6 +1,6 @@
-import { toUserListItem } from "@/server/application/dto/user-list-item";
-import { getUserById } from "@/server/application/use-cases/users";
+import { getUserByParticipantId } from "@/server/application/use-cases/users";
 import { NextResponse } from "next/server";
+import { participantNotFoundResponse } from "@/server/shared/http/participant-not-found";
 
 type RouteContext = {
     params: Promise<{ id: string }>;
@@ -10,14 +10,11 @@ export async function GET(_request: Request, context: RouteContext) {
     const { id } = await context.params;
 
     try {
-        const user = await getUserById(id);
+        const user = await getUserByParticipantId(id);
         if (!user) {
-            return NextResponse.json(
-                { error: "User not found" },
-                { status: 404 },
-            );
+            return participantNotFoundResponse();
         }
-        return NextResponse.json(toUserListItem(user));
+        return NextResponse.json({ name: user.name });
     } catch (error) {
         console.error(error);
         return NextResponse.json(

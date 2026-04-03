@@ -2,16 +2,18 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Menu } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Menu } from "lucide-react";
 
 type Props = {
     roomEventDisplay: string;
     loading: boolean;
     hasUsers: boolean;
     hasRemovableMembers: boolean;
+    wishlistReportBusy: boolean;
     onRefresh: () => void;
     onRunDraw: () => void;
     onSendAllEmails: () => void;
+    onDownloadWishlistReport: () => void;
     onRemoveAllParticipants: () => void;
     onDeleteRoom: () => void;
 };
@@ -21,9 +23,11 @@ export function AdminHeaderToolbar({
     loading,
     hasUsers,
     hasRemovableMembers,
+    wishlistReportBusy,
     onRefresh,
     onRunDraw,
     onSendAllEmails,
+    onDownloadWishlistReport,
     onRemoveAllParticipants,
     onDeleteRoom,
 }: Props) {
@@ -66,6 +70,15 @@ export function AdminHeaderToolbar({
                     disabled={loading || !hasUsers}
                 >
                     Send All Email
+                </Button>
+                <Button
+                    type="button"
+                    onClick={() => void onDownloadWishlistReport()}
+                    variant="outline"
+                    disabled={loading || wishlistReportBusy || !hasUsers}
+                >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden />
+                    Wish list report
                 </Button>
                 <Button
                     type="button"

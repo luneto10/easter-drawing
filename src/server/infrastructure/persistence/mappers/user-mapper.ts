@@ -3,12 +3,13 @@ import { User } from "@/server/domain/entities/user";
 
 export type UserRow = Pick<
     Prisma.UserGetPayload<object>,
-    "id" | "name" | "email" | "createdAt"
+    "id" | "participantId" | "name" | "email" | "createdAt"
 >;
 
 export function userRowToDomain(row: UserRow): User {
     return User.reconstitute({
         id: row.id,
+        participantId: row.participantId,
         name: row.name,
         email: row.email,
         createdAt: row.createdAt,
@@ -19,6 +20,7 @@ export function userRowToDomain(row: UserRow): User {
 export function userToCreateInput(user: User): Prisma.UserUncheckedCreateInput {
     return {
         id: user.id,
+        participantId: user.participantId,
         name: user.name,
         email: user.email,
     };

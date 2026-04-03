@@ -1,8 +1,10 @@
 import { joinRoom } from "@/server/application/use-cases/rooms";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { normalizeEntityId } from "@/server/shared/ids/normalize-entity-id";
+import { getUserByParticipantId } from "@/server/application/use-cases/users";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { participantNotFoundResponse } from "@/server/shared/http/participant-not-found";
 
 const bodySchema = z.object({
     userId: z
@@ -32,7 +34,12 @@ export async function POST(request: Request) {
     }
 
     try {
-        const room = await joinRoom(parsed.data.userId, parsed.data.roomId);
+        const user = await getUserByParticipantId(parsed.data.userId);
+        if (!user) {
+            return participantNotFoundResponse();
+        }
+
+        const room = await joinRoom(user.id, parsed.data.roomId);
         return NextResponse.json({
             room: {
                 id: room.id,

@@ -1,7 +1,6 @@
 import { listRoomMembers } from "@/server/application/use-cases/rooms";
-import {
-    getRecipientForGiverInRoom,
-} from "@/server/application/use-cases/users";
+import { getRecipientForGiverInRoom } from "@/server/application/use-cases/users";
+import { getUserById } from "@/server/application/use-cases/users";
 import { buildDrawEmailTemplate } from "@/server/application/services/draw-email-template";
 import { sendEmail } from "@/server/infrastructure/adapters/email";
 import { ensureRoomAdmin } from "@/server/infrastructure/config/room-admin-auth";
@@ -23,9 +22,17 @@ export async function POST(request: Request) {
                     giver.id,
                     auth.roomId,
                 );
+
+                // Email links must contain the public login id (`participantId`).
+                // `listRoomMembers()` intentionally does not expose it.
+                const giverParticipantId =
+                    assignment?.giver.participantId ??
+                    (await getUserById(giver.id))?.participantId ??
+                    giver.id;
+
                 const { subject, html } = buildDrawEmailTemplate({
                     giverName: assignment?.giver.name ?? giver.name,
-                    giverId: assignment?.giver.id ?? giver.id,
+                    giverId: giverParticipantId,
                     recipientName: assignment?.recipient?.name,
                     roomId: auth.roomId,
                     organizationName: auth.organizationName,

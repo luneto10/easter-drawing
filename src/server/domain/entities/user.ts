@@ -6,7 +6,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** User aggregate root — persistence-agnostic; map Prisma rows in infrastructure. */
 export class User {
     private constructor(
+        /** Internal database primary key (used for relations/admin). */
         readonly id: string,
+        /** Public participant identifier (used for login links and browser routing). */
+        readonly participantId: string,
         readonly name: string,
         readonly email: string | null,
         readonly createdAt: Date,
@@ -15,12 +18,14 @@ export class User {
     /** Load from DB (via repository / mapper). */
     static reconstitute(props: {
         id: string;
+        participantId: string;
         name: string;
         email: string | null;
         createdAt: Date;
     }) {
         return new User(
             props.id,
+            props.participantId,
             User.normalizeName(props.name),
             User.normalizeEmail(props.email),
             props.createdAt,
@@ -40,7 +45,8 @@ export class User {
         }
 
         return new User(
-            crypto.randomUUID(),
+            crypto.randomUUID(), // internal PK
+            crypto.randomUUID(), // public participantId
             normalized,
             User.normalizeEmail(email),
             new Date(),

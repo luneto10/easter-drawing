@@ -12,10 +12,11 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ParticipantAvatar } from "@/components/ui/participant-avatar";
+import { HomeDesiredItemsPanel } from "@/components/home/home-desired-items-panel";
 import { HomeRoomCard } from "@/components/home/home-room-card";
 import { screenVariants } from "@/components/home/home-motion";
 import { cn } from "@/lib/utils";
-import type { UserRoomListItem } from "@/components/home/home-types";
+import type { UserRoomListItem } from "@/types/home";
 
 type Props = {
     savedUserId: string;
@@ -35,6 +36,9 @@ type Props = {
     onOpenJoinRoom: () => void;
     onSelectMyRoom: (room: UserRoomListItem) => void;
     onRevealMyRoom: (room: UserRoomListItem) => void;
+    wishlistReportBusyRoomId: string | null;
+    onDownloadWishlistReport: (room: UserRoomListItem) => void;
+    onOpenRecoverId: () => void;
 };
 
 export function HomeIntroSection({
@@ -55,6 +59,9 @@ export function HomeIntroSection({
     onOpenJoinRoom,
     onSelectMyRoom,
     onRevealMyRoom,
+    wishlistReportBusyRoomId,
+    onDownloadWishlistReport,
+    onOpenRecoverId,
 }: Props) {
     const [participantIdCopied, setParticipantIdCopied] = useState(false);
 
@@ -79,6 +86,13 @@ export function HomeIntroSection({
                 ? myRooms.find((r) => r.id === roomIdSummary)
                 : undefined,
         [myRooms, roomIdSummary],
+    );
+
+    const showWishlistPanel = Boolean(
+        savedUserId &&
+            roomIdSummary &&
+            selectedRoomFromList &&
+            savedUserId.trim(),
     );
 
     const organizerAdminHref =
@@ -211,6 +225,14 @@ export function HomeIntroSection({
                             >
                                 <Link href="/join">Create account</Link>
                             </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="rounded-xl text-zinc-400 hover:text-zinc-200"
+                                onClick={onOpenRecoverId}
+                            >
+                                Email me my ID
+                            </Button>
                         </>
                     ) : null}
                     {savedUserId ? (
@@ -285,15 +307,37 @@ export function HomeIntroSection({
                                 <HomeRoomCard
                                     room={room}
                                     selected={roomIdSummary === room.id}
-                                    isOrganizer={
-                                        savedUserId === room.creatorId
-                                    }
+                                    isOrganizer={room.isOrganizer}
                                     onSelect={() => onSelectMyRoom(room)}
                                     onReveal={() => onRevealMyRoom(room)}
+                                    onDownloadWishlistReport={
+                                        room.isOrganizer &&
+                                        room.adminKey
+                                            ? () =>
+                                                  onDownloadWishlistReport(
+                                                      room,
+                                                  )
+                                            : undefined
+                                    }
+                                    wishlistReportLoading={
+                                        wishlistReportBusyRoomId === room.id
+                                    }
                                 />
                             </li>
                         ))}
                     </ul>
+                    {showWishlistPanel && roomIdSummary ? (
+                        <div className="pt-2">
+                            <HomeDesiredItemsPanel
+                                userId={savedUserId.trim()}
+                                roomId={roomIdSummary}
+                                roomLabel={
+                                    roomTitle ??
+                                    `${roomIdSummary.slice(0, 8)}…`
+                                }
+                            />
+                        </div>
+                    ) : null}
                 </div>
             ) : null}
 

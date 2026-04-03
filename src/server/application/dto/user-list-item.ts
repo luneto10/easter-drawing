@@ -10,19 +10,19 @@ export type UserListItem = {
 
 export function toUserListItem(user: User): UserListItem {
     return {
-        id: user.id,
+        id: user.participantId,
         name: user.name,
         email: user.email,
         createdAt: user.createdAt.toISOString(),
     };
 }
 
-/** Participant in a draw room (includes assignment for that room). */
+/** Participant in a draw room (assignment flag only — recipient user id is never exposed over the admin API). */
 export type RoomMemberListItem = {
     id: string;
     name: string;
     email: string | null;
-    recipientId: string | null;
+    hasRecipientAssigned: boolean;
     createdAt: string;
     /** Room creator (organizer); cannot be removed from this room via admin. */
     isOrganizer: boolean;

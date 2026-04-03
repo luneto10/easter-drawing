@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useState } from "react";
 import { STORAGE_KEY } from "@/components/home/home-motion";
-import type { CreateUserResponse } from "@/components/join/join-types";
+import type { CreateUserResponse } from "@/types/join";
+import { AppApiClient } from "@/lib/api/app-api-client";
 
 export function useJoinAccount() {
     const [name, setName] = useState("");
@@ -18,20 +19,15 @@ export function useJoinAccount() {
         setCreated(null);
 
         try {
-            const response = await fetch("/api/users", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name,
-                    email: email || undefined,
-                }),
+            const outcome = await AppApiClient.createUser({
+                name,
+                email: email || undefined,
             });
-            const payload = await response.json();
-            if (!response.ok) {
-                setError(payload?.error ?? "Failed to create account");
+            if (!outcome.ok) {
+                setError(outcome.error);
                 return;
             }
-            const user = payload as CreateUserResponse;
+            const user: CreateUserResponse = outcome.user;
             window.localStorage.setItem(STORAGE_KEY, user.id);
             setCreated(user);
             setName("");

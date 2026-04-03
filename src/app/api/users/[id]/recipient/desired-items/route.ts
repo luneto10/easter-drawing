@@ -1,8 +1,6 @@
-import { getRecipientForGiverInRoom } from "@/server/application/use-cases/users";
-import { getUserByParticipantId } from "@/server/application/use-cases/users";
+import { listRecipientDesiredItemsForGiver } from "@/server/application/use-cases/desired-items";
 import { DomainError } from "@/server/shared/errors/domain-error";
 import { NextResponse } from "next/server";
-import { participantNotFoundResponse } from "@/server/shared/http/participant-not-found";
 
 type RouteContext = {
     params: Promise<{ id: string }>;
@@ -10,8 +8,7 @@ type RouteContext = {
 
 export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
-    const roomId =
-        new URL(request.url).searchParams.get("roomId")?.trim() ?? "";
+    const roomId = new URL(request.url).searchParams.get("roomId")?.trim() ?? "";
 
     if (!roomId) {
         return NextResponse.json(
@@ -21,30 +18,23 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     try {
-        const giver = await getUserByParticipantId(id);
-        if (!giver) {
-            return participantNotFoundResponse();
-        }
-
-        const result = await getRecipientForGiverInRoom(giver.id, roomId);
-        if (!result) {
+        const payload = await listRecipientDesiredItemsForGiver(
+            id,
+            roomId,
+        );
+        if (!payload) {
             return NextResponse.json(
                 {
-                    error: "Your assignment is not ready yet. The organizer still needs to run the draw for this room.",
+                    error:
+                        "Your assignment is not ready yet. The organizer still needs to run the draw for this room.",
                 },
                 { status: 404 },
             );
         }
 
         return NextResponse.json({
-            giver: {
-                id: result.giver.id,
-                name: result.giver.name,
-            },
-            recipient: {
-                id: result.recipient.id,
-                name: result.recipient.name,
-            },
+            recipientName: payload.recipientName,
+            items: payload.items,
         });
     } catch (error) {
         if (error instanceof DomainError) {
@@ -56,7 +46,7 @@ export async function GET(request: Request, context: RouteContext) {
         }
         console.error(error);
         return NextResponse.json(
-            { error: "Failed to load recipient" },
+            { error: "Failed to load gift ideas" },
             { status: 500 },
         );
     }

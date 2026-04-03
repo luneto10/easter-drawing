@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminUserRow } from "@/components/admin/admin-dashboard-types";
+import type { AdminUserRow } from "@/types/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,7 @@ export function AdminParticipantsTable({
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
-                                <TableHead>Recipient ID</TableHead>
+                                <TableHead>Draw assignment</TableHead>
                                 <TableHead className="text-center">
                                     Status
                                 </TableHead>
@@ -47,7 +47,7 @@ export function AdminParticipantsTable({
                         </TableHeader>
                         <TableBody>
                             {users.map((user) => {
-                                const hasReferenceId = Boolean(user.recipientId);
+                                const hasReferenceId = user.hasRecipientAssigned;
                                 return (
                                     <TableRow key={user.id}>
                                         <TableCell>
@@ -66,8 +66,20 @@ export function AdminParticipantsTable({
                                         <TableCell className="font-mono text-xs">
                                             {user.email ?? "-"}
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {user.recipientId ?? "-"}
+                                        <TableCell className="text-xs">
+                                            <span
+                                                className="inline-block select-none blur-md"
+                                                aria-hidden
+                                            >
+                                                {hasReferenceId
+                                                    ? "████-████-████"
+                                                    : "——————"}
+                                            </span>
+                                            <span className="sr-only">
+                                                {hasReferenceId
+                                                    ? "Someone is assigned. The participant ID is hidden and not sent to the browser."
+                                                    : "No one assigned yet for this giver."}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Badge

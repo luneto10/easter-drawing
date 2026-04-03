@@ -9,7 +9,14 @@ import { NextResponse } from "next/server";
 export async function GET() {
     try {
         const users = await listUsers();
-        return NextResponse.json(users.map(toUserListItem));
+        // Intentionally omit participant/login IDs from this endpoint.
+        return NextResponse.json(
+            users.map((u) => ({
+                name: u.name,
+                email: u.email,
+                createdAt: u.createdAt.toISOString(),
+            })),
+        );
     } catch (error) {
         console.error(error);
         return NextResponse.json(
@@ -24,7 +31,10 @@ export async function POST(request: Request) {
     try {
         body = await request.json();
     } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+        return NextResponse.json(
+            { error: "Invalid JSON body" },
+            { status: 400 },
+        );
     }
 
     const parsed = createUserBodySchema.safeParse(body);
@@ -36,13 +46,16 @@ export async function POST(request: Request) {
     }
 
     try {
-        const user = await createUser(parsed.data.name, parsed.data.email ?? null);
+        const user = await createUser(
+            parsed.data.name,
+            parsed.data.email ?? null,
+        );
 
         if (user.email) {
             try {
                 const { subject, html } = buildWelcomeEmailTemplate({
                     name: user.name,
-                    userId: user.id,
+                    userId: user.participantId,
                     appUrl: process.env.APP_URL,
                 });
                 await sendEmail({

@@ -1,5 +1,5 @@
 import { createRoom } from "@/server/application/use-cases/rooms";
-import { getUserById } from "@/server/application/use-cases/users";
+import { getUserByParticipantId } from "@/server/application/use-cases/users";
 import { buildRoomAdminEmailTemplate } from "@/server/application/services/room-admin-email-template";
 import { sendEmail } from "@/server/infrastructure/adapters/email";
 import { DomainError } from "@/server/shared/errors/domain-error";
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         );
     }
 
-    const creator = await getUserById(parsed.data.creatorUserId);
+    const creator = await getUserByParticipantId(parsed.data.creatorUserId);
     if (!creator?.email) {
         return NextResponse.json(
             {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     try {
         const { room, adminKey } = await createRoom(
-            parsed.data.creatorUserId,
+            creator.id,
             parsed.data.title,
             parsed.data.organizationName,
             parsed.data.eventName,

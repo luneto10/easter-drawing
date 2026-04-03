@@ -24,6 +24,8 @@ export function useAdminDashboard() {
     const [roomEventDisplay, setRoomEventDisplay] = useState("");
     const [drawEnabled, setDrawEnabled] = useState<boolean | null>(null);
     const [joinUrlCopied, setJoinUrlCopied] = useState(false);
+    const [participantNamesCopied, setParticipantNamesCopied] =
+        useState(false);
     const [wishlistReportBusy, setWishlistReportBusy] = useState(false);
 
     const hasUsers = useMemo(() => users.length > 0, [users.length]);
@@ -398,6 +400,17 @@ export function useAdminDashboard() {
         window.setTimeout(() => setJoinUrlCopied(false), 2000);
     }, [joinRoomUrl]);
 
+    const copyParticipantNames = useCallback(() => {
+        if (users.length === 0) return;
+        const text = users
+            .map((u) => u.name.trim())
+            .filter(Boolean)
+            .join("\n");
+        void navigator.clipboard.writeText(text);
+        setParticipantNamesCopied(true);
+        window.setTimeout(() => setParticipantNamesCopied(false), 2000);
+    }, [users]);
+
     const downloadWishlistReport = useCallback(async () => {
         setWishlistReportBusy(true);
         setError("");
@@ -456,6 +469,8 @@ export function useAdminDashboard() {
             drawEnabled,
             joinRoomUrl,
             joinUrlCopied,
+            participantNamesCopied,
+            copyParticipantNames,
             users,
             loading,
             error,

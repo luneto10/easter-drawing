@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, FileSpreadsheet, Menu } from "lucide-react";
+import { ArrowLeft, Copy, FileSpreadsheet, Menu } from "lucide-react";
 
 type Props = {
     roomEventDisplay: string;
@@ -10,6 +10,8 @@ type Props = {
     hasUsers: boolean;
     hasRemovableMembers: boolean;
     wishlistReportBusy: boolean;
+    participantNamesCopied: boolean;
+    onCopyParticipantNames: () => void;
     onRefresh: () => void;
     onRunDraw: () => void;
     onSendAllEmails: () => void;
@@ -24,6 +26,8 @@ export function AdminHeaderToolbar({
     hasUsers,
     hasRemovableMembers,
     wishlistReportBusy,
+    participantNamesCopied,
+    onCopyParticipantNames,
     onRefresh,
     onRunDraw,
     onSendAllEmails,
@@ -70,6 +74,16 @@ export function AdminHeaderToolbar({
                     disabled={loading || !hasUsers}
                 >
                     Send All Email
+                </Button>
+                <Button
+                    type="button"
+                    onClick={() => void onCopyParticipantNames()}
+                    variant="outline"
+                    disabled={loading || !hasUsers}
+                    aria-label="Copy all participant names to clipboard"
+                >
+                    <Copy className="mr-2 h-4 w-4" aria-hidden />
+                    {participantNamesCopied ? "Copied names" : "Copy names"}
                 </Button>
                 <Button
                     type="button"

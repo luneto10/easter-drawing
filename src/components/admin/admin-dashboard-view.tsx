@@ -23,6 +23,8 @@ export function AdminDashboardView({ dashboard: d }: Props) {
                     hasUsers={d.hasUsers}
                     hasRemovableMembers={d.hasRemovableMembers}
                     wishlistReportBusy={d.wishlistReportBusy}
+                    participantNamesCopied={d.participantNamesCopied}
+                    onCopyParticipantNames={() => void d.copyParticipantNames()}
                     onRefresh={d.refreshUsersAndRoom}
                     onRunDraw={d.runDrawAgain}
                     onSendAllEmails={d.sendAllEmails}

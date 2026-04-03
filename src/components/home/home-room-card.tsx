@@ -55,11 +55,11 @@ export function HomeRoomCard({
                 aria-label={`Select room ${room.title}, ${room.organizationName}, ${room.eventName}. ${room.drawEnabled ? "Draw open." : "Draw closed."}`}
             />
             <CardContent className="pointer-events-none relative z-2 flex flex-col gap-2.5 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                    <CardTitle className="truncate p-0 text-base font-medium leading-snug text-zinc-100">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <CardTitle className="order-2 truncate p-0 text-base font-medium leading-snug text-zinc-100 sm:order-1">
                         {room.title}
                     </CardTitle>
-                    <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="order-1 flex min-w-0 items-center justify-between gap-2 sm:order-2">
                         <CardDescription className="min-w-0 flex-1 truncate p-0 text-xs leading-snug text-zinc-500">
                             {room.organizationName} · {room.eventName}
                         </CardDescription>
@@ -78,7 +78,7 @@ export function HomeRoomCard({
                     </div>
                     <p
                         className={cn(
-                            "text-xs font-medium leading-snug",
+                            "order-3 text-xs font-medium leading-snug",
                             room.drawEnabled
                                 ? "text-emerald-400"
                                 : "text-red-400",

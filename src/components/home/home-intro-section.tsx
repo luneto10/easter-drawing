@@ -9,28 +9,11 @@ import {
     type MouseEvent,
 } from "react";
 import { motion } from "motion/react";
-import {
-    Gift,
-    LayoutDashboard,
-    LogIn,
-    LogOut,
-    DoorOpen,
-    PlusCircle,
-} from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ParticipantAvatar } from "@/components/ui/participant-avatar";
-import { HomeDesiredItemsPanel } from "@/components/home/home-desired-items-panel";
-import { HomeWishListDescription } from "@/components/home/wish-list-description";
-import { HomeRoomCard } from "@/components/home/home-room-card";
+
+import { HomeIntroHero } from "@/components/home/home-intro-hero";
+import { HomeIntroProfileButton } from "@/components/home/home-intro-profile-button";
+import { HomeIntroRoomsPanel } from "@/components/home/home-intro-rooms-panel";
+import { HomeIntroWishlistDialog } from "@/components/home/home-intro-wishlist-dialog";
 import { screenVariants } from "@/components/home/home-motion";
 import { cn } from "@/lib/utils";
 import type { UserRoomListItem } from "@/types/home";
@@ -57,6 +40,7 @@ type Props = {
     wishlistReportBusyRoomId: string | null;
     onDownloadWishlistReport: (room: UserRoomListItem) => void;
     onOpenRecoverId: () => void;
+    createAccountHref: string;
 };
 
 export function HomeIntroSection({
@@ -81,8 +65,8 @@ export function HomeIntroSection({
     wishlistReportBusyRoomId,
     onDownloadWishlistReport,
     onOpenRecoverId,
+    createAccountHref,
 }: Props) {
-    const [participantIdCopied, setParticipantIdCopied] = useState(false);
     const [wishlistOpen, setWishlistOpen] = useState(false);
     /** Ignore intro background deselect right after closing wish list (overlay click-through). */
     const suppressClearRoomAfterWishlistCloseRef = useRef(false);
@@ -152,7 +136,6 @@ export function HomeIntroSection({
             ? `/admin?room=${encodeURIComponent(selectedRoomFromList.id)}&key=${encodeURIComponent(selectedRoomFromList.adminKey)}`
             : null;
 
-    /** No room selected → generic hero. With a room → organization (eyebrow) and event name (title) as they load. */
     const eyebrow =
         roomIdSummary && focusOrganizationName
             ? focusOrganizationName
@@ -167,11 +150,15 @@ export function HomeIntroSection({
 
     const handleIntroBackgroundClick = useCallback(
         (e: MouseEvent<HTMLElement>) => {
-            if (wishlistOpen || suppressClearRoomAfterWishlistCloseRef.current) {
+            if (
+                wishlistOpen ||
+                suppressClearRoomAfterWishlistCloseRef.current
+            ) {
                 return;
             }
             const el = e.target as HTMLElement;
             if (el.closest("[data-home-room-card]")) return;
+            if (el.closest('[data-slot="scroll-area"]')) return;
             if (el.closest("button")) return;
             if (el.closest("a")) return;
             if (el.closest('[role="dialog"]')) return;
@@ -183,6 +170,33 @@ export function HomeIntroSection({
         [wishlistOpen, roomIdSummary, onClearRoomSelection],
     );
 
+    const showRoomsPanel = Boolean(
+        savedUserId && (myRoomsLoading || myRooms.length > 0),
+    );
+
+    const hero = (
+        <HomeIntroHero
+            eyebrow={eyebrow}
+            welcomeHeadline={welcomeHeadline}
+            roomLine={roomLine}
+            statusHint={statusHint}
+            savedUserId={savedUserId}
+            profileName={profileName}
+            profileLoading={profileLoading}
+            hasFullRoomBranding={hasFullRoomBranding}
+            createAccountHref={createAccountHref}
+            organizerAdminHref={organizerAdminHref}
+            showWishlistButton={showWishlistPanel}
+            roomIdSummary={roomIdSummary}
+            onOpenLogin={onOpenLogin}
+            onOpenCreateRoom={onOpenCreateRoom}
+            onOpenJoinRoom={onOpenJoinRoom}
+            onOpenRecoverId={onOpenRecoverId}
+            onLogout={onLogout}
+            onOpenWishlist={() => handleWishlistOpenChange(true)}
+        />
+    );
+
     return (
         <motion.section
             key="intro"
@@ -192,271 +206,71 @@ export function HomeIntroSection({
             exit="exit"
             role="presentation"
             onClick={handleIntroBackgroundClick}
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-y-auto text-center"
+            className={cn(
+                "absolute inset-0 z-10 flex flex-col text-center",
+                showRoomsPanel
+                    ? "h-full min-h-0 w-full items-stretch overflow-hidden"
+                    : "items-center justify-center overflow-y-auto",
+            )}
         >
-            <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-3">
-                <div className="flex w-full flex-wrap items-start justify-between gap-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">
-                        {eyebrow}
-                    </p>
-                    {savedUserId ? (
-                        <div className="flex max-w-full flex-col items-end gap-2">
-                            <button
-                                type="button"
-                                className="flex max-w-full items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-1.5 pl-1.5 pr-4 text-left shadow-sm transition-colors hover:border-zinc-600 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
-                                aria-label="Your profile — click to copy participant ID"
-                                title="Click to copy your participant ID"
-                                onClick={() => {
-                                    void navigator.clipboard.writeText(
-                                        savedUserId,
-                                    );
-                                    setParticipantIdCopied(true);
-                                    window.setTimeout(
-                                        () => setParticipantIdCopied(false),
-                                        2000,
-                                    );
-                                }}
-                            >
-                                <ParticipantAvatar
-                                    name={profileName}
-                                    loading={profileLoading}
-                                    size="md"
-                                />
-                                <div className="min-w-0 text-left">
-                                    <p className="text-sm font-medium leading-tight text-zinc-100">
-                                        {profileLoading && !profileName
-                                            ? "Loading…"
-                                            : (profileName ?? "Participant")}
-                                    </p>
-                                    <p
-                                        className={cn(
-                                            "mt-0.5 text-xs leading-snug",
-                                            participantIdCopied
-                                                ? "text-emerald-400"
-                                                : "text-zinc-500",
-                                        )}
-                                        aria-live="polite"
-                                    >
-                                        {participantIdCopied
-                                            ? "Copied to clipboard"
-                                            : "Click to copy your ID"}
-                                    </p>
-                                </div>
-                            </button>
-                            {roomLine ? (
-                                <p className="mt-2 max-w-[min(100%,16rem)] space-x-2 text-xs leading-snug text-zinc-500">
-                                    <span>{roomLine}</span>
-                                    {statusHint ? (
-                                        <span>· {statusHint}</span>
-                                    ) : null}
-                                </p>
-                            ) : (
-                                <p className="mt-2 text-xs text-amber-500/90">
-                                    Choose a room to continue
-                                </p>
-                            )}
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className="space-y-6 text-center">
-                    <h1 className="text-4xl font-semibold tracking-tight text-zinc-50 sm:text-6xl">
-                        {welcomeHeadline}
-                    </h1>
-
-                    <p className="text-base leading-8 text-zinc-400 sm:text-lg">
-                        {!savedUserId
-                            ? "Log in with your participant ID, or create an account with your email."
-                            : hasFullRoomBranding
-                              ? "Reveal your assignment when this exchange is open, or select another room below."
-                              : "Pick a room below, or create or join one. Green means the organizer is accepting new participants."}
-                    </p>
-                </div>
-            </div>
-
-            <div className="mx-auto mt-8 w-full max-w-2xl space-y-4 px-3">
-                <div className="flex flex-wrap justify-center gap-2">
-                    {!savedUserId ? (
-                        <>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="rounded-xl"
-                                onClick={onOpenLogin}
-                            >
-                                <LogIn className="mr-2 h-4 w-4" />
-                                Log in
-                            </Button>
-                            <Button
-                                asChild
-                                type="button"
-                                variant="outline"
-                                className="rounded-xl"
-                            >
-                                <Link href="/join">Create account</Link>
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="rounded-xl text-zinc-400 hover:text-zinc-200"
-                                onClick={onOpenRecoverId}
-                            >
-                                Email me my ID
-                            </Button>
-                        </>
-                    ) : null}
-                    {savedUserId ? (
-                        <>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="rounded-xl"
-                                onClick={onOpenCreateRoom}
-                            >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Create room
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="rounded-xl"
-                                onClick={onOpenJoinRoom}
-                            >
-                                <DoorOpen className="mr-2 h-4 w-4" />
-                                Join room
-                            </Button>
-                            {organizerAdminHref ? (
-                                <Button
-                                    asChild
-                                    type="button"
-                                    variant="secondary"
-                                    className="rounded-xl"
-                                >
-                                    <Link
-                                        href={organizerAdminHref}
-                                        aria-label="Open organizer dashboard"
-                                    >
-                                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                                        Organizer
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="rounded-xl"
-                                onClick={onLogout}
-                            >
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Log out
-                            </Button>
-                            {showWishlistPanel && roomIdSummary ? (
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="rounded-xl"
-                                    onClick={() => handleWishlistOpenChange(true)}
-                                >
-                                    <Gift className="mr-2 h-4 w-4 text-amber-400" />
-                                    Wish list
-                                </Button>
-                            ) : null}
-                        </>
-                    ) : null}
-                </div>
-            </div>
-
-            {showWishlistPanel && roomIdSummary ? (
-                <Dialog
-                    open={wishlistOpen}
-                    onOpenChange={handleWishlistOpenChange}
+            {savedUserId ? (
+                <div
+                    className="pointer-events-auto absolute right-4 top-4 z-30 sm:right-6 sm:top-6 md:hidden"
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    <DialogContent
-                        showCloseButton
-                        onCloseAutoFocus={(ev) => ev.preventDefault()}
-                        className="max-h-[min(90vh,640px)] max-w-[calc(100%-2rem)] gap-4 border-zinc-800 bg-zinc-950 text-zinc-100 sm:max-w-lg dark:border-zinc-800"
-                    >
-                        <DialogHeader className="text-left">
-                            <DialogTitle className="flex items-center gap-2 text-zinc-50">
-                                <Gift
-                                    className="h-5 w-5 shrink-0 text-amber-400"
-                                    aria-hidden
-                                />
-                                Your wish list
-                            </DialogTitle>
-                            <DialogDescription className="text-zinc-400" asChild>
-                                <HomeWishListDescription
-                                    roomLabel={
-                                        roomTitle ??
-                                        `${roomIdSummary.slice(0, 8)}…`
-                                    }
-                                />
-                            </DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="max-h-[min(50vh,380px)] pr-4">
-                            <HomeDesiredItemsPanel
-                                key={`${savedUserId.trim()}-${roomIdSummary}`}
-                                variant="plain"
-                                userId={savedUserId.trim()}
-                                roomId={roomIdSummary}
-                                roomLabel={
-                                    roomTitle ??
-                                    `${roomIdSummary.slice(0, 8)}…`
+                    <HomeIntroProfileButton
+                        savedUserId={savedUserId}
+                        profileName={profileName}
+                        profileLoading={profileLoading}
+                        placement="toolbar"
+                    />
+                </div>
+            ) : null}
+            {showRoomsPanel ? (
+                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                    <div className="flex min-h-0 flex-1 flex-col justify-center px-3 pb-10">
+                        <div className="mx-auto flex max-h-full min-h-0 w-full max-w-2xl flex-col overflow-hidden">
+                            <div className="shrink-0">{hero}</div>
+                            <HomeIntroRoomsPanel
+                                myRooms={myRooms}
+                                myRoomsLoading={myRoomsLoading}
+                                roomIdSummary={roomIdSummary}
+                                wishlistReportBusyRoomId={
+                                    wishlistReportBusyRoomId
+                                }
+                                error={error}
+                                onSelectMyRoom={onSelectMyRoom}
+                                onRevealMyRoom={onRevealMyRoom}
+                                onDownloadWishlistReport={
+                                    onDownloadWishlistReport
                                 }
                             />
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
-            ) : null}
-
-            {savedUserId && (myRoomsLoading || myRooms.length > 0) ? (
-                <div className="mx-auto mt-8 w-full max-w-lg space-y-3 px-3 text-left">
-                    <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                        Your rooms
-                    </p>
-                    {myRoomsLoading ? (
-                        <p className="text-center text-sm text-zinc-400">
-                            Loading your rooms…
-                        </p>
-                    ) : null}
-                    {!myRoomsLoading && myRooms.length === 0 ? (
-                        <p className="text-center text-sm text-zinc-400">
-                            You are not in any room yet. Create one or join with
-                            an ID.
-                        </p>
-                    ) : null}
-                    <ul className="space-y-3">
-                        {myRooms.map((room) => (
-                            <li key={room.id}>
-                                <HomeRoomCard
-                                    room={room}
-                                    selected={roomIdSummary === room.id}
-                                    isOrganizer={room.isOrganizer}
-                                    onSelect={() => onSelectMyRoom(room)}
-                                    onReveal={() => onRevealMyRoom(room)}
-                                    onDownloadWishlistReport={
-                                        room.isOrganizer && room.adminKey
-                                            ? () =>
-                                                  onDownloadWishlistReport(room)
-                                            : undefined
-                                    }
-                                    wishlistReportLoading={
-                                        wishlistReportBusyRoomId === room.id
-                                    }
-                                />
-                            </li>
-                        ))}
-                    </ul>
+                        </div>
+                    </div>
                 </div>
-            ) : null}
+            ) : (
+                <>
+                    {hero}
+                    {error ? (
+                        <div className="mx-auto mt-6 w-full max-w-2xl px-3">
+                            <p className="text-center text-sm text-red-400">
+                                {error}
+                            </p>
+                        </div>
+                    ) : null}
+                    <div className="pb-10" aria-hidden />
+                </>
+            )}
 
-            {error ? (
-                <div className="mx-auto mt-6 w-full max-w-2xl px-3">
-                    <p className="text-center text-sm text-red-400">{error}</p>
-                </div>
+            {showWishlistPanel && roomIdSummary ? (
+                <HomeIntroWishlistDialog
+                    open={wishlistOpen}
+                    onOpenChange={handleWishlistOpenChange}
+                    savedUserId={savedUserId}
+                    roomId={roomIdSummary}
+                    roomTitle={roomTitle}
+                />
             ) : null}
-
-            <div className="pb-10" aria-hidden />
         </motion.section>
     );
 }

@@ -9,6 +9,7 @@ import { HomeModals } from "@/components/home/home-modals";
 import { HomeRevealBackButton } from "@/components/home/home-reveal-back-button";
 import { HomeRevealSection } from "@/components/home/home-reveal-section";
 import { useHomeContentModel } from "@/components/home/use-home-content-model";
+import { joinPageHref } from "@/lib/app-nav-links";
 
 export function HomeContent() {
     const m = useHomeContentModel();
@@ -16,6 +17,8 @@ export function HomeContent() {
     if (m.view === "boot") {
         return <div className="h-dvh bg-zinc-950 text-zinc-100 dark" />;
     }
+
+    const createAccountHref = joinPageHref(m.roomIdSummary);
 
     return (
         <div className="fixed inset-0 overflow-hidden bg-zinc-950 text-zinc-100 dark">
@@ -127,6 +130,7 @@ export function HomeContent() {
                                 m.setRecoverSuccess(null);
                                 m.setModal("recoverId");
                             }}
+                            createAccountHref={createAccountHref}
                         />
                     ) : (
                         <HomeRevealSection

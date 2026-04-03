@@ -49,6 +49,13 @@ export function JoinPageView({ vm }: Props) {
                             Register with your email — we will send your
                             participant ID. It is also saved on this device for
                             quick log in.
+                            {vm.inviteRoomId ? (
+                                <>
+                                    {" "}
+                                    After sign-up you will be added to the room
+                                    from your invite link.
+                                </>
+                            ) : null}
                         </p>
                     </div>
 
@@ -103,15 +110,25 @@ export function JoinPageView({ vm }: Props) {
                                 {vm.created.id}
                             </p>
                             <p className="mt-4 text-xs text-zinc-500">
-                                Saved in your browser. You can create or join a
-                                room from the home screen.
+                                {vm.postCreateJoinError
+                                    ? "Your account is ready. We could not add you to the room from the link — use Join room on the home page with the room ID from your organizer."
+                                    : vm.inviteRoomId
+                                      ? "Saved in your browser. You have been added to the invited room — open home to continue."
+                                      : "Saved in your browser. You can create or join a room from the home screen."}
                             </p>
+                            {vm.postCreateJoinError ? (
+                                <p className="mt-3 text-sm text-amber-400">
+                                    {vm.postCreateJoinError}
+                                </p>
+                            ) : null}
                             <Button
                                 asChild
                                 className="mt-6 w-full rounded-xl"
                                 variant="secondary"
                             >
-                                <Link href="/">Back to home</Link>
+                                <Link href={vm.homeAfterCreateHref}>
+                                    Back to home
+                                </Link>
                             </Button>
                         </motion.div>
                     ) : null}
